@@ -1,0 +1,44 @@
+{
+  "name": "traveler-backend",
+  "version": "0.1.0",
+  "description": "Traveler Backend API - Template-based workflow management system for work definition, instantiation, and tracking",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "author": "Traveler Team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/traveler-backend.git"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/**/*.js",
+    "format:check": "prettier --check src/**/*.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.22.1",
+    "express-rate-limit": "^8.3.2",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "ldapts": "^8.1.7",
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.8.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
