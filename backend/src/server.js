@@ -86,10 +86,23 @@ const connectDB = async () => {
   }
 };
 
+// Validate authentication configuration on startup
+const validateAuthConfigOnStartup = () => {
+  try {
+    const { validateAuthConfig } = require('./controllers/auth');
+    validateAuthConfig(config.auth);
+    logger.info('Authentication configuration validated successfully');
+  } catch (error) {
+    logger.error('Authentication configuration error:', error.message);
+    process.exit(1);
+  }
+};
+
 // Start server
 const PORT = serverConfig.port;
 
 connectDB().then(() => {
+  validateAuthConfigOnStartup();
   app.listen(PORT, () => {
     logger.info(`Server running in ${serverConfig.env} mode on port ${PORT}`);
   });

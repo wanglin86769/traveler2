@@ -6,6 +6,32 @@ const ApiError = require('../utils/ApiError');
 const config = require('../config');
 const logger = require('../utils/logger');
 
+// Configuration validation function
+const validateAuthConfig = (authConfig) => {
+  const ldapEnabled = authConfig.ldap?.enabled ?? false;
+  const localEnabled = authConfig.local?.enabled ?? false;
+
+  // Case 1: No authentication method enabled
+  if (!ldapEnabled && !localEnabled) {
+    throw new Error(
+      'Authentication configuration error: ' +
+      'At least one authentication method must be enabled. ' +
+      'Please enable either "local" or "ldap" authentication.'
+    );
+  }
+
+  // Case 2: Both authentication methods enabled
+  if (ldapEnabled && localEnabled) {
+    throw new Error(
+      'Authentication configuration error: ' +
+      'Only one authentication method can be enabled. ' +
+      'Please enable either "local" or "ldap", not both.'
+    );
+  }
+
+  return { ldapEnabled, localEnabled };
+};
+
 const generateToken = (user) => {
   const authConfig = config.auth;
   return jwt.sign(
@@ -13,6 +39,78 @@ const generateToken = (user) => {
     authConfig.jwt.secret,
     { expiresIn: authConfig.jwt.expiresIn }
   );
+};
+
+// LDAP authentication function
+const loginWithLdap = async (username, password) => {
+  try {
+    const ldapUser = await ldapClient.authenticate(username, password);
+    
+    let user = await User.findById(username);
+    
+    if (!user) {
+      user = new User({
+        _id: username,
+        name: ldapUser.displayName || username,
+        email: ldapUser.mail,
+        roles: [],
+        lastLogin: new Date()
+      });
+      await user.save();
+    } else {
+      user.lastLogin = new Date();
+      await user.save();
+    }
+
+    const token = generateToken(user);
+
+    return {
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        roles: user.roles
+      },
+      token
+    };
+  } catch (error) {
+    // Do not fallback, throw error directly
+    logger.error('LDAP authentication failed', { 
+      username, 
+      error: error.message 
+    });
+    throw new ApiError(401, 'LDAP authentication failed: ' + error.message);
+  }
+};
+
+// Local authentication function
+const loginWithLocal = async (username, password) => {
+  const user = await User.findById(username);
+  
+  if (!user) {
+    throw new ApiError(401, 'Invalid username or password');
+  }
+
+  const validPassword = await bcrypt.compare(password, user.password || '');
+  
+  if (!validPassword) {
+    throw new ApiError(401, 'Invalid username or password');
+  }
+
+  user.lastLogin = new Date();
+  await user.save();
+  
+  const token = generateToken(user);
+
+  return {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      roles: user.roles
+    },
+    token
+  };
 };
 
 const login = async (req, res, next) => {
@@ -29,68 +127,21 @@ const login = async (req, res, next) => {
     const authConfig = config.auth;
     const ldapConfig = authConfig.ldap;
     
-    if (ldapConfig.enabled) {
-      try {
-        const ldapUser = await ldapClient.authenticate(username, password);
-        
-        let user = await User.findById(username);
-        
-        if (!user) {
-          user = new User({
-            _id: username,
-            name: ldapUser.displayName || username,
-            email: ldapUser.mail,
-            roles: [],
-            lastLogin: new Date()
-          });
-          await user.save();
-        } else {
-          user.lastLogin = new Date();
-          await user.save();
-        }
-
-        const token = generateToken(user);
-
-        return res.json({
-          user: {
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            roles: user.roles
-          },
-          token
-        });
-      } catch (ldapError) {
-        logger.warn('LDAP auth failed, falling back to local auth', { error: ldapError.message });
-      }
+    // Validate authentication configuration
+    const { ldapEnabled, localEnabled } = validateAuthConfig(authConfig);
+    
+    // Choose authentication method based on configuration
+    let result;
+    if (ldapEnabled) {
+      result = await loginWithLdap(username, password);
+    } else if (localEnabled) {
+      result = await loginWithLocal(username, password);
+    } else {
+      // Should not reach here (config validation ensures this)
+      throw new ApiError(500, 'Authentication method not configured');
     }
 
-    const user = await User.findById(username);
-    
-    if (!user) {
-      throw new ApiError(401, 'Invalid username or password');
-    }
-
-    const validPassword = await bcrypt.compare(password, user.password || '');
-    
-    if (!validPassword) {
-      throw new ApiError(401, 'Invalid username or password');
-    }
-
-    user.lastLogin = new Date();
-    await user.save();
-    
-    const token = generateToken(user);
-
-    res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        roles: user.roles
-      },
-      token
-    });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -135,17 +186,19 @@ const refreshToken = async (req, res, next) => {
 const getProviders = (req, res) => {
   const authConfig = config.auth;
   const providers = {
-    local: true,
-    ldap: authConfig.ldap.enabled
+    local: authConfig.local?.enabled ?? false,
+    ldap: authConfig.ldap?.enabled ?? false
   };
 
   res.json(providers);
 };
 
+// Export validation function for server startup check
 module.exports = {
   login,
   getMe,
   logout,
   refreshToken,
-  getProviders
+  getProviders,
+  validateAuthConfig
 };
