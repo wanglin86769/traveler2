@@ -22,7 +22,7 @@ import Binders from './pages/binders/Binders'
 import BinderDetail from './pages/binders/BinderDetail'
 import Groups from './pages/admin/Groups'
 import Profile from './pages/user/Profile'
-import Admin from './pages/admin/Admin'
+import User from './pages/admin/User'
 import Docs from './pages/Docs'
 import NotFound from './pages/NotFound'
 
@@ -107,15 +107,8 @@ function App() {
         {/* Reviews Routes */}
         <Route path="/reviews/my-reviews" element={<MyReviews />} />
 
-        {/* Admin Route */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute roles={['admin']}>
-              <Admin />
-            </ProtectedRoute>
-          }
-        />
+        {/* Admin/Users Route */}
+        <Route path="/admin/users" element={<User />} />
       </Route>
 
       {/* 404 Not Found */}

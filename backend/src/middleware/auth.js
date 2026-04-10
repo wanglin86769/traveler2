@@ -6,24 +6,20 @@ const config = require('../config');
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new ApiError(401, 'No token provided');
     }
 
     const token = authHeader.substring(7);
     const authConfig = config.auth;
-    
+
     const decoded = jwt.verify(token, authConfig.jwt.secret);
-    
+
     const user = await User.findById(decoded.sub).select('-password');
-    
+
     if (!user) {
       throw new ApiError(401, 'User not found');
-    }
-
-    if (!user.active) {
-      throw new ApiError(401, 'User account is inactive');
     }
 
     req.user = user;
@@ -58,22 +54,22 @@ const authorize = (...roles) => {
 const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return next();
     }
 
     const token = authHeader.substring(7);
     const authConfig = config.auth;
-    
+
     const decoded = jwt.verify(token, authConfig.jwt.secret);
-    
+
     const user = await User.findById(decoded.sub).select('-password');
-    
-    if (user && user.active) {
+
+    if (user) {
       req.user = user;
     }
-    
+
     next();
   } catch (error) {
     // Ignore token errors, continue execution

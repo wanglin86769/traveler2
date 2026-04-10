@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const ldapClient = require('../utils/ldapClient');
 const { User } = require('../models/User');
 const ApiError = require('../utils/ApiError');

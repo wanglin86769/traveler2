@@ -6,7 +6,6 @@ import {
   CardContent,
   Typography,
   TextField,
-  Button,
   Grid,
   Avatar,
   Chip,
@@ -14,31 +13,12 @@ import {
   Snackbar,
   Alert
 } from '@mui/material'
-import { Person as PersonIcon, Save as SaveIcon } from '@mui/icons-material'
-import userService from '@/services/userService'
+import { Person as PersonIcon } from '@mui/icons-material'
 
 function Profile() {
   const { user } = useAuth()
   
-  const [name, setName] = useState(user?.name || '')
-  const [email, setEmail] = useState(user?.email || '')
-  const [phone, setPhone] = useState(user?.phone || '')
-  const [mobile, setMobile] = useState(user?.mobile || '')
-  const [office, setOffice] = useState(user?.office || '')
-  const [saving, setSaving] = useState(false)
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
-
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      await userService.updateUser(user._id, { name, email, phone, mobile, office })
-      setSnackbar({ open: true, message: 'Profile updated', severity: 'success' })
-    } catch (error) {
-      setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to update profile', severity: 'error' })
-    } finally {
-      setSaving(false)
-    }
-  }
 
   return (
     <Box>
@@ -112,8 +92,8 @@ function Profile() {
                   <TextField
                     fullWidth
                     label="Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={user?.name || ''}
+                    disabled
                   />
                 </Grid>
                 
@@ -122,8 +102,8 @@ function Profile() {
                     fullWidth
                     label="Email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={user?.email || ''}
+                    disabled
                   />
                 </Grid>
                 
@@ -131,8 +111,8 @@ function Profile() {
                   <TextField
                     fullWidth
                     label="Phone"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    value={user?.phone || ''}
+                    disabled
                   />
                 </Grid>
                 
@@ -140,8 +120,8 @@ function Profile() {
                   <TextField
                     fullWidth
                     label="Mobile"
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
+                    value={user?.mobile || ''}
+                    disabled
                   />
                 </Grid>
                 
@@ -149,20 +129,9 @@ function Profile() {
                   <TextField
                     fullWidth
                     label="Office"
-                    value={office}
-                    onChange={(e) => setOffice(e.target.value)}
+                    value={user?.office || ''}
+                    disabled
                   />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <Button
-                    variant="contained"
-                    startIcon={<SaveIcon />}
-                    onClick={handleSave}
-                    disabled={saving}
-                  >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </Button>
                 </Grid>
               </Grid>
             </CardContent>

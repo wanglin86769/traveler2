@@ -1,18 +1,14 @@
 const { User, Group } = require('../models/User');
 const ApiError = require('../utils/ApiError');
+const bcrypt = require('bcryptjs');
+const saltRounds = 10;
 
 const getAllUsers = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search, role, active } = req.query;
-    
-    if (!search && !role && active === undefined) {
-      if (!req.user.isAdmin() && !req.user.isManager()) {
-        throw new ApiError(403, 'You need admin or manager permission to list all users');
-      }
-    }
-    
+    const { page = 1, limit = 20, search, role } = req.query;
+
     const query = {};
-    
+
     if (search) {
       query.$or = [
         { _id: { $regex: search, $options: 'i' } },
@@ -20,13 +16,9 @@ const getAllUsers = async (req, res, next) => {
         { email: { $regex: search, $options: 'i' } }
       ];
     }
-    
+
     if (role) {
       query.roles = role;
-    }
-    
-    if (active !== undefined) {
-      query.active = active === 'true';
     }
 
     const users = await User.find(query)
@@ -78,15 +70,11 @@ const getUserById = async (req, res, next) => {
 
 const updateUser = async (req, res, next) => {
   try {
-    const { name, email, phone, mobile, office } = req.body;
-    
-    if (req.user._id !== req.params.id && !req.user.isAdmin()) {
-      throw new ApiError(403, 'Not authorized to update this user');
-    }
+    const { name, email, phone, mobile, office, roles } = req.body;
 
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { name, email, phone, mobile, office },
+      { name, email, phone, mobile, office, roles },
       { new: true, runValidators: true }
     ).select('-password');
 
@@ -100,46 +88,75 @@ const updateUser = async (req, res, next) => {
   }
 };
 
-const updateUserRoles = async (req, res, next) => {
+const createUser = async (req, res, next) => {
   try {
-    const { validationResult } = require('express-validator');
-    
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new ApiError(400, errors.array()[0].msg);
+    const { _id, name, email, phone, mobile, office, roles } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findById(_id);
+    if (existingUser) {
+      throw new ApiError(400, 'User already exists');
     }
 
-    const { roles } = req.body;
-    
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { roles },
-      { new: true, runValidators: true }
-    ).select('-password');
+    // Create user without setting password
+    const user = new User({
+      _id,
+      name,
+      email,
+      password: undefined,
+      phone,
+      mobile,
+      office,
+      roles: roles || []
+    });
 
-    if (!user) {
-      throw new ApiError(404, 'User not found');
-    }
+    await user.save();
 
-    res.json(user);
+    res.status(201).json(user);
   } catch (error) {
     next(error);
   }
 };
 
-const deactivateUser = async (req, res, next) => {
+const deleteUser = async (req, res, next) => {
   try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { active: false },
-      { new: true }
-    );
+    const user = await User.findByIdAndDelete(req.params.id);
 
     if (!user) {
       throw new ApiError(404, 'User not found');
     }
 
-    res.json({ message: 'User deactivated successfully' });
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      throw new ApiError(400, 'Password is required');
+    }
+
+    // Password strength validation
+    if (password.length < 6) {
+      throw new ApiError(400, 'Password must be at least 6 characters long');
+    }
+
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      throw new ApiError(404, 'User not found');
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ message: 'Password reset successfully' });
   } catch (error) {
     next(error);
   }
@@ -148,7 +165,8 @@ const deactivateUser = async (req, res, next) => {
 module.exports = {
   getAllUsers,
   getUserById,
+  createUser,
   updateUser,
-  updateUserRoles,
-  deactivateUser
+  deleteUser,
+  resetPassword
 };

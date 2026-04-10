@@ -72,7 +72,7 @@ const menuItems = [
     text: 'Admin',
     icon: <AdminIcon />,
     children: [
-      { text: 'Users', icon: <UserIcon />, path: '/admin', roles: ['admin'] },
+      { text: 'Users', icon: <UserIcon />, path: '/admin/users' },
       { text: 'Groups', icon: <GroupIcon />, path: '/groups', roles: ['admin', 'manager'] }
     ]
   },
