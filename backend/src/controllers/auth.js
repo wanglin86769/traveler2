@@ -9,7 +9,7 @@ const logger = require('../utils/logger');
 const generateToken = (user) => {
   const authConfig = config.auth;
   return jwt.sign(
-    { sub: user._id, roles: user.roles },
+    { sub: user._id },
     authConfig.jwt.secret,
     { expiresIn: authConfig.jwt.expiresIn }
   );

@@ -25,14 +25,14 @@ export const AuthProvider = ({ children }) => {
       setToken(storedToken)
       // Set isAuthenticated to true immediately
       setIsAuthenticated(true)
-      // Validate token and get user info
+      // Validate token and get user info from /me endpoint
       getCurrentUser(storedToken)
     } else {
       setLoading(false)
     }
   }, [])
 
-  // Get current user info
+  // Get current user info from /me endpoint
   const getCurrentUser = async (authToken) => {
     try {
       const response = await authService.getMe()
@@ -55,12 +55,14 @@ export const AuthProvider = ({ children }) => {
     setError(null)
     try {
       const response = await authService.login(username, password)
-      const { user, token } = response
+      const { token } = response
 
-      setUser(user)
       setToken(token)
       setIsAuthenticated(true)
       localStorage.setItem('token', token)
+
+      // Fetch complete user info from /me endpoint
+      await getCurrentUser(token)
 
       return { success: true }
     } catch (err) {
