@@ -10,15 +10,16 @@ router.get('/', authenticate, groupsController.getAllGroups);
 
 router.get('/:id', authenticate, groupsController.getGroupById);
 
-router.post('/', authenticate, authorize('admin', 'manager'), [
+router.post('/', authenticate, authorize('admin'), [
+  body('_id').notEmpty().withMessage('Group ID is required'),
   body('name').notEmpty().withMessage('Name is required')
 ], validateRequest, groupsController.createGroup);
 
-router.put('/:id', authenticate, authorize('admin', 'manager'), groupsController.updateGroup);
+router.put('/:id', authenticate, authorize('admin'), groupsController.updateGroup);
 
-router.post('/:id/members', authenticate, authorize('admin', 'manager'), groupsController.addGroupMember);
+router.post('/:id/members', authenticate, authorize('admin'), groupsController.addGroupMember);
 
-router.delete('/:id/members/:userId', authenticate, authorize('admin', 'manager'), groupsController.removeGroupMember);
+router.delete('/:id/members/:userId', authenticate, authorize('admin'), groupsController.removeGroupMember);
 
 router.delete('/:id', authenticate, authorize('admin'), groupsController.deleteGroup);
 

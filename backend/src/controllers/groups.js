@@ -1,4 +1,4 @@
-const { Group } = require('../models/User');
+const { Group, User } = require('../models/User');
 const ApiError = require('../utils/ApiError');
 
 const getAllGroups = async (req, res, next) => {
@@ -100,12 +100,18 @@ const addGroupMember = async (req, res, next) => {
   try {
     const { userId } = req.body;
     
+    // Verify user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(404, 'User not found');
+    }
+    
     const group = await Group.findById(req.params.id);
 
     if (!group) {
       throw new ApiError(404, 'Group not found');
     }
-
+    
     if (!group.members.includes(userId)) {
       group.members.push(userId);
       await group.save();

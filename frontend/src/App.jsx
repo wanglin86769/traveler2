@@ -95,11 +95,7 @@ function App() {
         <Route path="/binders/:id" element={<BinderDetail />} />
         
         {/* User Groups Route */}
-        <Route path="/groups" element={
-          <ProtectedRoute roles={['admin', 'manager']}>
-            <Groups />
-          </ProtectedRoute>
-        } />
+        <Route path="/admin/groups" element={<Groups />} />
         
         {/* User Profile Route */}
         <Route path="/profile" element={<Profile />} />
