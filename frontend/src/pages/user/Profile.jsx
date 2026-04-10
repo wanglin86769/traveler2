@@ -1,163 +1,120 @@
-import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   Box,
   Card,
   CardContent,
   Typography,
-  TextField,
-  Grid,
   Avatar,
   Chip,
   Divider,
-  Snackbar,
-  Alert
+  Grid,
+  Paper,
+  Stack
 } from '@mui/material'
-import { Person as PersonIcon } from '@mui/icons-material'
+import { Person as PersonIcon, Email as EmailIcon, Phone as PhoneIcon, Smartphone as MobileIcon, Business as BusinessIcon, AccessTime as TimeIcon, Shield as ShieldIcon } from '@mui/icons-material'
 
 function Profile() {
   const { user } = useAuth()
-  
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    return new Date(dateString).toLocaleString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short'
+    })
+  }
+
+  const InfoItem = ({ icon, label, value }) => (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1.5 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        width: 40,
+        height: 40,
+        borderRadius: 2,
+        bgcolor: 'primary.main',
+        color: 'white'
+      }}>
+        {icon}
+      </Box>
+      <Box sx={{ flex: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '13px', fontWeight: 500 }}>
+          {label}
+        </Typography>
+        <Typography variant="body1" sx={{ fontSize: '15px', color: '#1a1a1a', fontWeight: 400 }}>
+          {value || 'N/A'}
+        </Typography>
+      </Box>
+    </Box>
+  )
 
   return (
-    <Box>
-      <Typography variant="h4" fontWeight={600} gutterBottom>
-        Profile
-      </Typography>
+    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ width: '100%', maxWidth: 800 }}>
+        <Typography variant="h4" fontWeight={700} gutterBottom sx={{ color: '#1a1a1a' }}>
+          My profile
+        </Typography>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <Avatar
-                sx={{
-                  width: 100,
-                  height: 100,
-                  bgcolor: 'primary.main',
-                  fontSize: 40,
-                  mx: 'auto',
-                  mb: 2
-                }}
-              >
-                {user?.name?.charAt(0)?.toUpperCase() || <PersonIcon sx={{ fontSize: 50 }} />}
-              </Avatar>
-              
-              <Typography variant="h5" fontWeight={600}>
-                {user?.name}
-              </Typography>
-              
-              <Typography variant="body2" color="text.secondary">
-                {user?.email}
-              </Typography>
-              
-              <Divider sx={{ my: 2 }} />
-              
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Roles
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'center' }}>
-                {user?.roles?.map((role) => (
-                  <Chip key={role} label={role} size="small" color="primary" />
-                ))}
-                {(!user?.roles || user.roles.length === 0) && (
-                  <Typography variant="body2" color="text.secondary">
-                    No roles assigned
-                  </Typography>
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Edit Profile
-              </Typography>
-              <Divider sx={{ mb: 3 }} />
-              
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Username"
-                    value={user?._id}
-                    disabled
-                  />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Name"
-                    value={user?.name || ''}
-                    disabled
-                  />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    type="email"
-                    value={user?.email || ''}
-                    disabled
-                  />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Phone"
-                    value={user?.phone || ''}
-                    disabled
-                  />
-                </Grid>
-                
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Mobile"
-                    value={user?.mobile || ''}
-                    disabled
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Office"
-                    value={user?.office || ''}
-                    disabled
-                  />
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'center'
-        }}
-        sx={{
-          top: '80px'
-        }}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
+        <Card 
+          sx={{ 
+            borderRadius: 2,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            overflow: 'hidden'
+          }}
         >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <CardContent sx={{ p: 4 }}>
+            <Box sx={{ display: 'grid', gap: 1 }}>
+              <InfoItem 
+                icon={<PersonIcon />} 
+                label="User id" 
+                value={user?._id} 
+              />
+              <InfoItem 
+                icon={<PersonIcon />} 
+                label="Full name" 
+                value={user?.name} 
+              />
+              <InfoItem 
+                icon={<EmailIcon />} 
+                label="Email" 
+                value={user?.email} 
+              />
+              <InfoItem 
+                icon={<BusinessIcon />} 
+                label="Office" 
+                value={user?.office} 
+              />
+              <InfoItem 
+                icon={<PhoneIcon />} 
+                label="Office Phone" 
+                value={user?.phone} 
+              />
+              <InfoItem 
+                icon={<MobileIcon />} 
+                label="Mobile Phone" 
+                value={user?.mobile} 
+              />
+              <InfoItem 
+                icon={<TimeIcon />} 
+                label="Last Visited" 
+                value={formatDate(user?.lastLogin)} 
+              />
+              <InfoItem 
+                icon={<ShieldIcon />} 
+                label="Roles" 
+                value={user?.roles?.join(', ')} 
+              />
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   )
 }

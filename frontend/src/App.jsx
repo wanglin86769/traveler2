@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useRef } from 'react'
-import { CircularProgress } from '@mui/material'
+import { CircularProgress, Box } from '@mui/material'
 import { useAuth } from './contexts/AuthContext'
 import MainLayout from './layouts/MainLayout'
 import AuthLayout from './layouts/AuthLayout'
@@ -53,7 +53,16 @@ function App() {
   // Only show global loading during initial authentication check
   // Don't show it during login process to avoid flickering
   if (loading && !isInitializedRef.current) {
-    return <CircularProgress />
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+      >
+        <CircularProgress />
+      </Box>
+    )
   }
 
   return (
