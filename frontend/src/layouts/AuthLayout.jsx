@@ -26,7 +26,7 @@ function AuthLayout() {
               Traveler
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Lab Data Collection System
+              Workflow Template and Instance Platform
             </Typography>
           </Box>
           <Outlet />

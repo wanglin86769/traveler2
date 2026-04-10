@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   Box,
   TextField,
   Button,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material'
 
 function Login() {
@@ -14,9 +15,11 @@ function Login() {
   const [error, setError] = useState(null)
   const navigate = useNavigate()
   const { login: authLogin, isAuthenticated, loading } = useAuth()
+  const hasNavigatedRef = useRef(false)
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    if (!loading && isAuthenticated && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true
       navigate('/home', { replace: true })
     }
   }, [loading, isAuthenticated, navigate])
@@ -25,15 +28,9 @@ function Login() {
     e.preventDefault()
     setError(null)
 
-    try {
-      const result = await authLogin(username, password)
-      if (result.success) {
-        navigate('/home')
-      } else {
-        setError(result.error)
-      }
-    } catch (error) {
-      setError(error.response?.data?.message || 'Login failed')
+    const result = await authLogin(username, password)
+    if (!result.success) {
+      setError(result.error)
     }
   }
 
@@ -76,8 +73,10 @@ function Login() {
         fullWidth
         variant="contained"
         sx={{ mt: 3, mb: 2, py: 1.5 }}
+        disabled={loading}
+        startIcon={loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : null}
       >
-        Sign In
+        {loading ? 'Signing in...' : 'Sign In'}
       </Button>
     </Box>
   )

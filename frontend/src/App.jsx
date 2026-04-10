@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { CircularProgress, Box } from '@mui/material'
+import { useRef } from 'react'
+import { CircularProgress } from '@mui/material'
 import { useAuth } from './contexts/AuthContext'
 import MainLayout from './layouts/MainLayout'
 import AuthLayout from './layouts/AuthLayout'
@@ -41,20 +42,18 @@ const ProtectedRoute = ({ children, roles = [] }) => {
 }
 
 function App() {
-  const { loading } = useAuth()
+  const { loading, isAuthenticated } = useAuth()
+  const isInitializedRef = useRef(false)
 
-  // Show global loading state while authenticating
-  if (loading) {
-    return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-      >
-        <CircularProgress />
-      </Box>
-    )
+  // Mark as initialized after first render
+  if (!loading && !isInitializedRef.current) {
+    isInitializedRef.current = true
+  }
+
+  // Only show global loading during initial authentication check
+  // Don't show it during login process to avoid flickering
+  if (loading && !isInitializedRef.current) {
+    return <CircularProgress />
   }
 
   return (
@@ -92,10 +91,7 @@ function App() {
         {/* Binders Routes */}
         <Route path="/binders" element={<Binders />} />
         <Route path="/binders/my-binders" element={<Binders />} />
-        <Route path="/binders/:id" element={<BinderDetail />} />
-        
-        {/* User Groups Route */}
-        <Route path="/admin/groups" element={<Groups />} />
+        <Route path="/binders/:id" element={<BinderDetail />} />        
         
         {/* User Profile Route */}
         <Route path="/profile" element={<Profile />} />
@@ -103,8 +99,9 @@ function App() {
         {/* Reviews Routes */}
         <Route path="/reviews/my-reviews" element={<MyReviews />} />
 
-        {/* Admin/Users Route */}
+        {/* Admin Route */}
         <Route path="/admin/users" element={<User />} />
+        <Route path="/admin/groups" element={<Groups />} />
       </Route>
 
       {/* 404 Not Found */}

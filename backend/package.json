@@ -1,7 +1,7 @@
 {
   "name": "traveler-backend",
   "version": "0.1.0",
-  "description": "Traveler Backend API - Template-based workflow management system for work definition, instantiation, and tracking",
+  "description": "Traveler Backend API - Workflow Template and Instance Platform",
   "main": "src/server.js",
   "type": "commonjs",
   "author": "Traveler Team",

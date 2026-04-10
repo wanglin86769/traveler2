@@ -1,7 +1,7 @@
 {
   "name": "traveler-frontend",
   "version": "0.1.0",
-  "description": "Traveler Frontend - Web interface for template-based workflow management with form builder and work tracking",
+  "description": "Traveler Frontend - Workflow Template and Instance Platform",
   "type": "module",
   "scripts": {
     "dev": "vite",

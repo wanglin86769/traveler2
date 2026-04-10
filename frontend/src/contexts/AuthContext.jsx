@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import authService from '@/services/authService'
 
 const AuthContext = createContext(null)
@@ -17,15 +17,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const isInitializingRef = useRef(false)
 
   // Initialize: read token from localStorage
   useEffect(() => {
+    // Prevent duplicate initialization due to React Strict Mode
+    if (isInitializingRef.current) {
+      return
+    }
+    
+    isInitializingRef.current = true
     const storedToken = localStorage.getItem('token')
+    
     if (storedToken) {
       setToken(storedToken)
-      // Set isAuthenticated to true immediately
-      setIsAuthenticated(true)
       // Validate token and get user info from /me endpoint
+      // getCurrentUser will set isAuthenticated based on the result
       getCurrentUser(storedToken)
     } else {
       setLoading(false)
@@ -40,10 +47,8 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(true)
     } catch (err) {
       console.error('Failed to get current user:', err)
-      // Don't clear state immediately, just set user to null
       setUser(null)
-      // Keep token and isAuthenticated state, allow user to continue accessing protected routes
-      // If token is indeed invalid, subsequent API requests will return 401, handle it then
+      setIsAuthenticated(false)
     } finally {
       setLoading(false)
     }
@@ -53,15 +58,16 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     setLoading(true)
     setError(null)
+
     try {
       const response = await authService.login(username, password)
       const { token } = response
 
       setToken(token)
-      setIsAuthenticated(true)
       localStorage.setItem('token', token)
 
       // Fetch complete user info from /me endpoint
+      // getCurrentUser will set isAuthenticated based on the result
       await getCurrentUser(token)
 
       return { success: true }
