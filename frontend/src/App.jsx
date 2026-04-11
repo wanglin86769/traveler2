@@ -6,7 +6,7 @@ import MainLayout from './layouts/MainLayout'
 import AuthLayout from './layouts/AuthLayout'
 
 import Login from './pages/auth/Login'
-import Home from './pages/user/Home'
+import Home from './pages/Home'
 import MyForms from './pages/forms/MyForms'
 import FormBuilder from './pages/forms/FormBuilder'
 import FormDetail from './pages/forms/FormDetail'
