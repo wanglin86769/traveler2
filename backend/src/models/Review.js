@@ -45,7 +45,11 @@ const review = new Schema({
 
 async function removeReviewRequest(doc, id) {
   try {
-    doc.__review.reviewRequests.id(id).remove();
+    // Find and remove the review request by matching the _id field
+    const requestIndex = doc.__review.reviewRequests.findIndex(req => req._id.toString() === id.toString());
+    if (requestIndex !== -1) {
+      doc.__review.reviewRequests.splice(requestIndex, 1);
+    }
     await doc.save();
     logger.debug('Review request removed from document', { userId: id, docId: doc._id });
     const pull = { reviews: doc._id };

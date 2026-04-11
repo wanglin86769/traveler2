@@ -19,7 +19,8 @@ import {
   DialogContent,
   DialogActions,
   Alert,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material'
 import {
   ArrowBack as BackIcon,
@@ -41,7 +42,7 @@ function FormReviewerList() {
   const queryClient = useQueryClient()
 
   const [reviewerName, setReviewerName] = useState('')
-  const [selectedReviewers, setSelectedReviewers] = useState([])
+  const [selectedUser, setSelectedUser] = useState(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [reviewerToDelete, setReviewerToDelete] = useState(null)
 
@@ -59,17 +60,20 @@ function FormReviewerList() {
   })
 
   // Get users list
-  const { data: users, isLoading: usersLoading, error: usersError } = useQuery({
+  const { data: usersResponse, isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['users'],
     queryFn: () => getUsers(),
     retry: false
   })
+
+  const users = usersResponse?.data || []
 
   // Mutation to add reviewer
   const addReviewerMutation = useMutation({
     mutationFn: ({ uid, name }) => addReviewer(id, uid, name),
     onSuccess: () => {
       setReviewerName('')
+      setSelectedUser(null)
       queryClient.invalidateQueries(['form-review', id])
     }
   })
@@ -85,7 +89,14 @@ function FormReviewerList() {
   })
 
   const handleAddReviewer = (user) => {
-    addReviewerMutation.mutate({ uid: user._id, name: user.name })
+    setSelectedUser(user)
+    setReviewerName(user.name)
+  }
+
+  const handleRequestReview = () => {
+    if (selectedUser) {
+      addReviewerMutation.mutate({ uid: selectedUser._id, name: selectedUser.name })
+    }
   }
 
   const handleDeleteReviewer = (requestId) => {
@@ -107,7 +118,7 @@ function FormReviewerList() {
     )
   }
 
-  if (!form || !form.data) {
+  if (!form) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
         <Typography>Form not found</Typography>
@@ -115,8 +126,8 @@ function FormReviewerList() {
     )
   }
 
-  const formData = form.data
-  const review = reviewInfo?.data || {}
+  const formData = form
+  const review = reviewInfo || {}
   const reviewRequests = review.reviewRequests || []
   const reviewResults = review.reviewResults || []
 
@@ -133,51 +144,61 @@ function FormReviewerList() {
           Back
         </Button>
         <Typography variant="h4" fontWeight={600} sx={{ flexGrow: 1 }}>
-          Reviewer list for form <span style={{ color: '#1976d2' }}>{formData.title}</span>
+          Reviewer list for form{' '}
+          <Typography 
+            component="span" 
+            variant="h4"
+            fontWeight={600}
+            sx={{ 
+              color: '#1976d2',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              '&:hover': {
+                textDecoration: 'underline'
+              }
+            }}
+            onClick={() => navigate(`/forms/${id}`)}
+          >
+            {formData.title}
+          </Typography>
         </Typography>
       </Box>
 
       {/* Form Info */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          Status: <strong>{formData.status === 0.5 ? 'Under Review' : 'Draft'}</strong>
-          {' • '}
-          Version: <strong>{formData._v}</strong>
-          {' • '}
-          Type: <strong>{formData.formType}</strong>
-        </Typography>
+      <Paper sx={{ p: 2, mb: 2, border: '1px solid #E8E8E8' }}>
+        <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+          <Typography variant="body2" color="text.secondary">
+            Type: <strong>{formData.formType}</strong>
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Status: <strong>{formData.status === 0.5 ? 'Under Review' : 'Draft'}</strong>
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Version: <strong>{formData._v}</strong>
+          </Typography>
+        </Box>
       </Paper>
 
       {/* Add Reviewer */}
       {formData.status === 0.5 && (
-        <Paper sx={{ p: 2, mb: 2 }}>
+        <Paper sx={{ p: 2, mb: 2, border: '1px solid #E8E8E8' }}>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
             <TextField
               label="Search Reviewer"
               placeholder="Type reviewer name or ID to search..."
               value={reviewerName}
-              onChange={(e) => setReviewerName(e.target.value)}
+              onChange={(e) => {
+                setReviewerName(e.target.value)
+                setSelectedUser(null)
+              }}
               size="small"
               fullWidth
               sx={{ maxWidth: 400 }}
-              helperText={reviewerName ? `Searching for: "${reviewerName}"` : 'Start typing to search for reviewers'}
             />
             <Button
               variant="contained"
-              onClick={() => {
-                // Auto-select first match
-                const matchedUser = users?.find(
-                  user => user.name?.toLowerCase().includes(reviewerName.toLowerCase()) ||
-                         user._id?.toLowerCase().includes(reviewerName.toLowerCase())
-                )
-                if (matchedUser) {
-                  handleAddReviewer(matchedUser)
-                } else {
-                  // Show feedback if no match found
-                  console.log('No matching user found for:', reviewerName)
-                }
-              }}
-              disabled={!reviewerName.trim()}
+              onClick={handleRequestReview}
+              disabled={!selectedUser}
             >
               Request review
             </Button>
@@ -199,22 +220,28 @@ function FormReviewerList() {
                   .filter(user =>
                     (user.name?.toLowerCase().includes(reviewerName.toLowerCase()) ||
                      user._id?.toLowerCase().includes(reviewerName.toLowerCase())) &&
-                    Array.isArray(user.roles) && user.roles.includes('reviewer') &&
                     !reviewRequests.some(req => req._id === user._id)
                   )
                   .slice(0, 5)
-                  .map(user => (
-                    <Chip
-                      key={user._id}
-                      icon={<PersonIcon />}
-                      label={user.name}
-                      onClick={() => handleAddReviewer(user)}
-                      clickable
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                    />
-                  ))
+                  .map(user => {
+                    const hasReviewerRole = Array.isArray(user.roles) && user.roles.includes('reviewer')
+                    const isSelected = selectedUser?._id === user._id
+                    return (
+                      <Chip
+                        key={user._id}
+                        icon={<PersonIcon />}
+                        label={`${user.name} ${!hasReviewerRole ? '(no reviewer role)' : ''}`}
+                        onClick={() => handleAddReviewer(user)}
+                        clickable={hasReviewerRole}
+                        color={isSelected ? 'primary' : (hasReviewerRole ? 'default' : 'default')}
+                        variant={isSelected ? 'filled' : 'outlined'}
+                        sx={{ 
+                          opacity: hasReviewerRole ? 1 : 0.6,
+                          border: isSelected ? '2px solid #1976d2' : undefined
+                        }}
+                      />
+                    )
+                  })
               ) : (
                 <Typography variant="body2" color="text.secondary">
                   No users found matching "{reviewerName}"
@@ -234,7 +261,7 @@ function FormReviewerList() {
       )}
 
       {/* Reviewers Table */}
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} sx={{ border: '1px solid #E8E8E8' }}>
         <Table>
           <TableHead>
             <TableRow>
@@ -307,13 +334,15 @@ function FormReviewerList() {
                     </TableCell>
                     {formData.status === 0.5 && (
                       <TableCell>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeleteReviewer(request._id)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        <Tooltip title="Remove reviewer" placement="left">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteReviewer(request._id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     )}
                   </TableRow>

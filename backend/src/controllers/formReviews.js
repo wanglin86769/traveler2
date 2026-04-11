@@ -94,14 +94,14 @@ const getFormReviewInfo = async (req, res, next) => {
       review.reviewResults.map(async (result) => {
         const reviewer = await User.findById(result.reviewerId).select('_id name email');
         return {
-          ...result.toObject(),
+          ...result,
           reviewer: reviewer
         };
       })
     );
 
     res.json({
-      ...review.toObject(),
+      ...review,
       reviewRequests: populatedRequests,
       reviewResults: populatedResults
     });
