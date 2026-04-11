@@ -331,18 +331,16 @@ function FormBuilder() {
           <Typography variant="h5" fontWeight={600} sx={{ flexGrow: 1 }}>
             Edit Form
           </Typography>
-          {currentForm?.status === 0 && (
-            <Button
-              variant="contained"
-              startIcon={<SendIcon />}
-              onClick={() => setSubmitReviewOpen(true)}
-              disabled={elements.length === 0 || saving}
-              size="small"
-              sx={{ bgcolor: '#FF9800', '&:hover': { bgcolor: '#F57C00' } }}
-            >
-              Submit for review
-            </Button>
-          )}
+          <Button
+            variant="contained"
+            startIcon={<SendIcon />}
+            onClick={() => setSubmitReviewOpen(true)}
+            disabled={elements.length === 0 || saving || currentForm?.status !== 0}
+            size="small"
+            sx={{ bgcolor: '#FF9800', '&:hover': { bgcolor: '#F57C00' } }}
+          >
+            Submit for review
+          </Button>
           <Button
             variant="contained"
             startIcon={<PreviewIcon />}
@@ -357,7 +355,7 @@ function FormBuilder() {
             variant="contained"
             startIcon={<SaveIcon />}
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || elements.length === 0 || currentForm?.status !== 0}
             size="small"
           >
             {saving ? 'Saving...' : 'Save'}
