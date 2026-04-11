@@ -190,7 +190,10 @@ const getAllForms = async (req, res, next) => {
       ]
     };
 
-    if (req.user.isAdmin() || req.user.isManager()) {
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    const isManager = req.user.roles && req.user.roles.includes('manager');
+
+    if (isAdmin || isManager) {
       delete accessFilter.$or;
     } else {
       Object.assign(query, accessFilter);
@@ -307,7 +310,8 @@ const updateForm = async (req, res, next) => {
       throw new ApiError(403, 'Write access denied');
     }
 
-    if (form.status !== 0 && !req.user.isAdmin()) {
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    if (form.status !== 0 && !isAdmin) {
       throw new ApiError(400, 'Can only edit draft forms');
     }
 
@@ -467,7 +471,8 @@ const archiveForm = async (req, res, next) => {
       throw new ApiError(404, 'Form not found');
     }
 
-    if (form.owner !== req.user._id && !req.user.isAdmin()) {
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    if (form.owner !== req.user._id && !isAdmin) {
       throw new ApiError(403, 'Not authorized');
     }
 
@@ -500,7 +505,8 @@ const updateFormSharing = async (req, res, next) => {
       throw new ApiError(404, 'Form not found');
     }
 
-    if (form.owner !== req.user._id && !req.user.isAdmin()) {
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    if (form.owner !== req.user._id && !isAdmin) {
       throw new ApiError(403, 'Not authorized');
     }
 

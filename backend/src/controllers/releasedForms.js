@@ -61,7 +61,9 @@ const getReleasedFormById = async (req, res, next) => {
 
 const archiveReleasedForm = async (req, res, next) => {
   try {
-    if (!req.user.isAdmin() && !req.user.isManager()) {
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    const isManager = req.user.roles && req.user.roles.includes('manager');
+    if (!isAdmin && !isManager) {
       throw new ApiError(403, 'Not authorized');
     }
 

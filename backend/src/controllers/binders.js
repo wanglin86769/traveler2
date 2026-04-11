@@ -32,7 +32,9 @@ const getAllBinders = async (req, res, next) => {
     
     const query = { status: { $ne: 3 } };
     
-    if (!req.user.isAdmin() && !req.user.isManager()) {
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    const isManager = req.user.roles && req.user.roles.includes('manager');
+    if (!isAdmin && !isManager) {
       query.$or = [
         { createdBy: req.user._id },
         { owner: req.user._id },
@@ -511,7 +513,8 @@ const archiveBinder = async (req, res, next) => {
       throw new ApiError(404, 'Binder not found');
     }
 
-    if (binder.owner !== req.user._id && !req.user.isAdmin()) {
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    if (binder.owner !== req.user._id && !isAdmin) {
       throw new ApiError(403, 'Not authorized');
     }
 

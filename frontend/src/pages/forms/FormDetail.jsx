@@ -36,7 +36,8 @@ import {
   CheckCircle as ReleaseIcon,
   Share as ShareIcon,
   MoreVert as MoreVertIcon,
-  Archive as ArchiveIcon
+  Archive as ArchiveIcon,
+  Person as PersonIcon
 } from '@mui/icons-material'
 
 function FormDetail() {
@@ -142,14 +143,23 @@ function FormDetail() {
   const canEdit = currentForm?.status === 0 && 
     (currentForm?.createdBy === user?._id || currentForm?.owner === user?._id || user?.roles?.includes('admin'))
   
-  const canRelease = currentForm?.status === 0.5 && 
-    (currentForm?.createdBy === user?._id || currentForm?.owner === user?._id) &&
-    currentForm?.allApproved
+  const canRelease = currentForm?.createdBy === user?._id || 
+    currentForm?.owner === user?._id ||
+    user?.roles?.includes('admin') || 
+    user?.roles?.includes('manager')
+  
+  const isReleased = currentForm?.status === 1 || currentForm?.status === 2
   
   const canArchive = currentForm?.createdBy === user?._id || 
     currentForm?.owner === user?._id ||
     user?.roles?.includes('admin') || 
     user?.roles?.includes('manager')
+  
+  const isArchived = currentForm?.archived
+  
+  const canManageReviewers = currentForm?.status === 0.5 && 
+    (currentForm?.createdBy === user?._id || currentForm?.owner === user?._id || 
+     user?.roles?.includes('admin') || user?.roles?.includes('manager'))
 
   if (isLoading) {
     return (
@@ -205,21 +215,6 @@ function FormDetail() {
             <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
               Form Detail
             </Typography>
-            <Chip
-              label={getFormStatusLabel(currentForm.status)}
-              color={getFormStatusColor(currentForm.status)}
-              sx={{ mr: 1 }}
-            />
-            {canEdit && (
-              <Button
-                variant="contained"
-                startIcon={<EditIcon />}
-                onClick={() => navigate(`/forms/${id}/edit`)}
-                sx={{ mr: 1 }}
-              >
-                Edit
-              </Button>
-            )}
             <Button
               variant="contained"
               startIcon={<MoreVertIcon />}
@@ -227,7 +222,7 @@ function FormDetail() {
             >
               Actions
             </Button>
-            </Box>
+          </Box>
 
           {/* Paper with Form Information */}
           <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
@@ -318,22 +313,34 @@ function FormDetail() {
       </Box>
 
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} disableScrollLock>
-        {canRelease && (
-          <MenuItem 
-            onClick={handleRelease}
-            disabled={releaseMutation.isPending}
-          >
-            <ReleaseIcon sx={{ mr: 1 }} /> 
-            {releaseMutation.isPending ? 'Releasing...' : 'Release'}
-          </MenuItem>
-        )}
+        <MenuItem 
+          onClick={() => { handleMenuClose(); navigate(`/forms/${id}/edit`) }}
+          disabled={!canEdit}
+        >
+          <EditIcon sx={{ mr: 1 }} /> 
+          Edit
+        </MenuItem>
+        <MenuItem 
+          onClick={() => { handleMenuClose(); navigate(`/forms/${id}/reviewers`) }}
+          disabled={!canManageReviewers}
+        >
+          <PersonIcon sx={{ mr: 1 }} /> 
+          Manage Reviewers
+        </MenuItem>
+        <MenuItem 
+          onClick={handleRelease}
+          disabled={releaseMutation.isPending || isReleased || currentForm?.status !== 0.5 || !currentForm?.allApproved}
+        >
+          <ReleaseIcon sx={{ mr: 1 }} /> 
+          {releaseMutation.isPending ? 'Releasing...' : (isReleased ? 'Released' : 'Release')}
+        </MenuItem>
         {canArchive && (
           <MenuItem 
             onClick={handleArchive}
-            disabled={archiveMutation.isPending}
+            disabled={archiveMutation.isPending || isArchived}
           >
             <ArchiveIcon sx={{ mr: 1 }} /> 
-            {archiveMutation.isPending ? 'Archiving...' : 'Archive'}
+            {archiveMutation.isPending ? 'Archiving...' : (isArchived ? 'Archived' : 'Archive')}
           </MenuItem>
         )}
         <MenuItem onClick={() => { handleMenuClose(); setShareDialogOpen(true) }}>

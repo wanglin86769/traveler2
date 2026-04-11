@@ -20,7 +20,9 @@ const checkAccess = (resource, accessLevel = 0) => {
       }
       
       // Check if user is admin or manager
-      if (req.user.isAdmin() || req.user.isManager()) {
+      const isAdmin = req.user.roles && req.user.roles.includes('admin');
+      const isManager = req.user.roles && req.user.roles.includes('manager');
+      if (isAdmin || isManager) {
         req.accessLevel = 1;
         return next();
       }
@@ -68,7 +70,9 @@ const getUserAccessLevel = async (doc, user) => {
   const userId = user._id;
   
   if (doc.createdBy === userId || doc.owner === userId) return 1;
-  if (user.isAdmin() || user.isManager()) return 1;
+  const isAdmin = user.roles && user.roles.includes('admin');
+  const isManager = user.roles && user.roles.includes('manager');
+  if (isAdmin || isManager) return 1;
   
   const userShare = doc.sharedWith?.find(s => s.user === userId);
   if (userShare) return userShare.access;

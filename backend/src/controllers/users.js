@@ -53,8 +53,10 @@ const getUserById = async (req, res, next) => {
       throw new ApiError(404, 'User not found');
     }
 
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+      const isManager = req.user.roles && req.user.roles.includes('manager');
     if (req.user._id !== req.params.id &&
-        !req.user.isAdmin() && !req.user.isManager()) {
+        !isAdmin && !isManager) {
       return res.json({
         _id: user._id,
         name: user.name,
