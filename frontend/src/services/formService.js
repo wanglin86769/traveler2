@@ -69,10 +69,6 @@ const formService = {
     return api.get('/released-forms', { params: { formType: 'discrepancy' } })
   },
 
-  cloneForm: (id) => {
-    return api.post(`/forms/${id}/clone`)
-  },
-
   updateSharing: (id, data) => {
     return api.put(`/forms/${id}/share`, data)
   },
@@ -87,7 +83,12 @@ const formService = {
     return api.get('/reviews/forms/my-reviews', { params })
   },
 
-  // Transfer ownership
+  // Clone form
+cloneForm: async (id, title) => {
+    return api.post(`/forms/${id}/clone`, { title })
+},
+
+// Transfer ownership
   transferOwnership: (formIds, userId) => {
     return api.put('/forms/transfer', { formIds, userId })
   }
@@ -98,6 +99,7 @@ export const getForms = formService.getForms
 export const getForm = formService.getForm
 export const createForm = formService.createForm
 export const updateForm = formService.updateForm
+export const cloneForm = formService.cloneForm
 export const archiveForm = formService.archiveForm
 export const submitForReview = formService.submitForReview
 export const getReviewInfo = formService.getReviewInfo

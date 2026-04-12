@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Avatar from '@mui/material/Avatar'
-import { getForms, createForm, getDraftForms, getTransferredForms, getUnderReviewForms, getReleasedForms, transferOwnership } from '@/services/formService'
+import { getForms, createForm, getDraftForms, getTransferredForms, getUnderReviewForms, getReleasedForms, transferOwnership, cloneForm } from '@/services/formService'
 import { getFormStatusLabel, getFormStatusColor } from '@/utils/status'
 import { useAuth } from '@/contexts/AuthContext'
 import TransferOwnershipDialog from '@/components/forms/TransferOwnershipDialog'
+import CloneDialog from '@/components/forms/CloneDialog'
 
 import {
   Box,
@@ -82,6 +83,7 @@ function MyForms() {
   const [isReloading, setIsReloading] = useState(false)
   const [selectedForms, setSelectedForms] = useState([])
   const [transferDialogOpen, setTransferDialogOpen] = useState(false)
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false)
 
   // Tab definitions
   const tabs = [
@@ -139,6 +141,28 @@ function MyForms() {
     }
   })
 
+  // Clone forms mutation
+  const cloneMutation = useMutation({
+    mutationFn: async (titles) => {
+      // Clone each form with its specified title
+      const clonePromises = selectedForms.map((formId) => {
+        const form = items.find(item => item._id === formId)
+        const title = titles[formId] || `${form?.title} clone`
+        return cloneForm(formId, title)
+      })
+      return Promise.all(clonePromises)
+    },
+    onSuccess: () => {
+      setSnackbar({ open: true, message: 'Forms cloned successfully', severity: 'success' })
+      setSelectedForms([])
+      setCloneDialogOpen(false)
+      queryClient.invalidateQueries({ queryKey: ['forms'] })
+    },
+    onError: (error) => {
+      setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to clone forms', severity: 'error' })
+    }
+  })
+
   const handleChangePage = (event, newPage) => {
     setPage(newPage)
   }
@@ -171,11 +195,6 @@ function MyForms() {
 
   const handleView = () => {
     navigate(`/forms/${selectedForm._id}`)
-    handleMenuClose()
-  }
-
-  const handleClone = () => {
-    // TODO: Implement clone
     handleMenuClose()
   }
 
@@ -214,6 +233,18 @@ function MyForms() {
     transferOwnershipMutation.mutate(userId)
   }
 
+  const handleClone = () => {
+    if (selectedForms.length === 0) {
+      setSnackbar({ open: true, message: 'Please select at least one form', severity: 'warning' })
+      return
+    }
+    setCloneDialogOpen(true)
+  }
+
+  const handleConfirmClone = (titles) => {
+    cloneMutation.mutate(titles)
+  }
+
   const handleNewForm = () => {
     setNewFormDialogOpen(true)
   }
@@ -248,8 +279,10 @@ function MyForms() {
           </Button>
           <Button
             variant="contained"
+            color="secondary"
             startIcon={<CloneIcon />}
-            onClick={() => {/* TODO: Implement clone */}}
+            onClick={handleClone}
+            disabled={selectedForms.length === 0}
           >
             Clone
           </Button>
@@ -340,7 +373,6 @@ function MyForms() {
                   <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Title</TableCell>
                   <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Status</TableCell>
                   <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Type</TableCell>
-                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Ver</TableCell>
                   <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Tags</TableCell>
                   <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Updated</TableCell>
                   <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Updated By</TableCell>
@@ -350,17 +382,17 @@ function MyForms() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ border: '1px solid #E0E0E0' }}>Loading...</TableCell>
+                    <TableCell colSpan={8} align="center" sx={{ border: '1px solid #E0E0E0' }}>Loading...</TableCell>
                   </TableRow>
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center" color="error" sx={{ border: '1px solid #E0E0E0' }}>
+                    <TableCell colSpan={8} align="center" color="error" sx={{ border: '1px solid #E0E0E0' }}>
                       Error: {error.message}
                     </TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ border: '1px solid #E0E0E0' }}>No forms found</TableCell>
+                    <TableCell colSpan={8} align="center" sx={{ border: '1px solid #E0E0E0' }}>No forms found</TableCell>
                   </TableRow>
                 ) : (
                   items.map((form) => (
@@ -406,11 +438,9 @@ function MyForms() {
                         </Typography>
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #E0E0E0' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Avatar sx={{ width: 24, height: 24, fontSize: 12, bgcolor: 'grey.400' }}>
-                            {form.updatedBy?.name?.charAt(0) || 'U'}
-                          </Avatar>
-                        </Box>
+                        <Typography variant="body2">
+                          {form.updatedBy?._id || form.updatedBy || '-'}
+                        </Typography>
                       </TableCell>
                       <TableCell align="left" sx={{ border: '1px solid #E0E0E0' }}>
                         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -546,6 +576,14 @@ function MyForms() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <CloneDialog
+        open={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        onConfirm={handleConfirmClone}
+        selectedForms={selectedForms.map(id => items.find(f => f._id === id)).filter(Boolean)}
+        isCloning={cloneMutation.isPending}
+      />
 
       <TransferOwnershipDialog
         open={transferDialogOpen}

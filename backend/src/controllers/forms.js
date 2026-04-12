@@ -480,23 +480,26 @@ const cloneForm = async (req, res, next) => {
     }
 
     const accessLevel = await getUserAccessLevel(originalForm, req.user);
-    
+
     if (accessLevel < 0) {
       throw new ApiError(403, 'Access denied');
     }
 
     const clonedForm = new Form({
-      title: `Copy of ${originalForm.title}`,
-      description: originalForm.description,
+      title: req.body.title,
       json: originalForm.json,
-      tags: originalForm.tags,
       formType: originalForm.formType,
+      tags: originalForm.tags,
       createdBy: req.user._id,
-      owner: req.user._id,
+      createdOn: Date.now(),
+      updatedBy: req.user._id,
+      updatedOn: Date.now(),
+      sharedWith: [],
+      clonedFrom: originalForm._id,
       status: 0
     });
 
-    await clonedForm.save();
+    await clonedForm.saveWithHistory(req.user._id);
 
     res.status(201).json(clonedForm);
   } catch (error) {
