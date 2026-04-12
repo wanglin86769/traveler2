@@ -9,6 +9,10 @@ const formService = {
     return api.get('/forms/draft', { params })
   },
 
+  getTransferredForms: (params = {}) => {
+    return api.get('/forms/transferred', { params })
+  },
+
   getUnderReviewForms: (params = {}) => {
     return api.get('/forms/under-review', { params })
   },
@@ -81,6 +85,11 @@ const formService = {
   // Reviews
   getMyReviews: (params = {}) => {
     return api.get('/reviews/forms/my-reviews', { params })
+  },
+
+  // Transfer ownership
+  transferOwnership: (formIds, userId) => {
+    return api.put('/forms/transfer', { formIds, userId })
   }
 }
 
@@ -98,8 +107,10 @@ export const submitReviewResult = formService.submitReviewResult
 export const getMyReviews = formService.getMyReviews
 export const releaseForm = formService.releaseForm
 export const getDraftForms = formService.getDraftForms
+export const getTransferredForms = formService.getTransferredForms
 export const getUnderReviewForms = formService.getUnderReviewForms
 export const getMyReleasedForms = formService.getMyReleasedForms
 export const getReleasedForms = formService.getReleasedForms
+export const transferOwnership = formService.transferOwnership
 
 export default formService

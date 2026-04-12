@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Avatar from '@mui/material/Avatar'
-import { getForms, createForm, getDraftForms, getUnderReviewForms, getReleasedForms } from '@/services/formService'
+import { getForms, createForm, getDraftForms, getTransferredForms, getUnderReviewForms, getReleasedForms, transferOwnership } from '@/services/formService'
 import { getFormStatusLabel, getFormStatusColor } from '@/utils/status'
 import { useAuth } from '@/contexts/AuthContext'
+import TransferOwnershipDialog from '@/components/forms/TransferOwnershipDialog'
 
 import {
   Box,
@@ -80,10 +81,12 @@ function MyForms() {
   const [currentTab, setCurrentTab] = useState(0)
   const [isReloading, setIsReloading] = useState(false)
   const [selectedForms, setSelectedForms] = useState([])
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false)
 
   // Tab definitions
   const tabs = [
     { label: 'My Draft Forms', api: getDraftForms },
+    { label: 'Transferred Draft Forms', api: getTransferredForms },
     { label: 'Under Review Forms', api: getUnderReviewForms },
     { label: 'Approved And Released Forms', api: getReleasedForms }
   ]
@@ -118,6 +121,21 @@ function MyForms() {
     },
     onError: (error) => {
       setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to create form', severity: 'error' })
+    }
+  })
+
+  // Transfer ownership mutation
+  const transferOwnershipMutation = useMutation({
+    mutationFn: async (userId) => {
+      return await transferOwnership(selectedForms, userId)
+    },
+    onSuccess: () => {
+      setSnackbar({ open: true, message: 'Ownership transferred successfully', severity: 'success' })
+      setSelectedForms([])
+      queryClient.invalidateQueries({ queryKey: ['forms'] })
+    },
+    onError: (error) => {
+      setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to transfer ownership', severity: 'error' })
     }
   })
 
@@ -184,6 +202,18 @@ function MyForms() {
     }
   }
 
+  const handleTransferOwnership = () => {
+    if (selectedForms.length === 0) {
+      setSnackbar({ open: true, message: 'Please select at least one form', severity: 'warning' })
+      return
+    }
+    setTransferDialogOpen(true)
+  }
+
+  const handleConfirmTransfer = (userId) => {
+    transferOwnershipMutation.mutate(userId)
+  }
+
   const handleNewForm = () => {
     setNewFormDialogOpen(true)
   }
@@ -223,6 +253,15 @@ function MyForms() {
           >
             Clone
           </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={<PersonIcon />}
+            onClick={handleTransferOwnership}
+            disabled={selectedForms.length === 0}
+          >
+            Transfer Ownership
+          </Button>
         </Box>
       </Box>
 
@@ -249,14 +288,6 @@ function MyForms() {
               disabled={isReloading}
             >
               {isReloading ? 'Reloading...' : 'Reload table'}
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<PersonIcon />}
-              sx={{ bgcolor: '#FF9800', '&:hover': { bgcolor: '#F57C00' } }}
-            >
-              Transfer ownership
             </Button>
           </Box>
 
@@ -353,9 +384,6 @@ function MyForms() {
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                         <Typography variant="body2">{form.formType || 'normal'}</Typography>
-                      </TableCell>
-                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
-                        <Typography variant="body2">{form._v || 0}</Typography>
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -518,6 +546,15 @@ function MyForms() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <TransferOwnershipDialog
+        open={transferDialogOpen}
+        onClose={() => setTransferDialogOpen(false)}
+        onConfirm={handleConfirmTransfer}
+        selectedForms={selectedForms.map(id => items.find(f => f._id === id)).filter(Boolean)}
+        currentUserId={user._id}
+        isTransferring={transferOwnershipMutation.isPending}
+      />
 
       <Snackbar
         open={snackbar.open}

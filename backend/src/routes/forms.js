@@ -8,11 +8,18 @@ const formsController = require('../controllers/forms');
 
 router.get('/draft', authenticate, formsController.getDraftForms);
 
+router.get('/transferred', authenticate, formsController.getTransferredForms);
+
 router.get('/under-review', authenticate, formsController.getUnderReviewForms);
 
 router.get('/closed', authenticate, formsController.getClosedForms);
 
 router.get('/', authenticate, formsController.getAllForms);
+
+router.put('/transfer', authenticate, [
+  body('formIds').isArray({ min: 1 }).withMessage('At least one form ID is required'),
+  body('userId').notEmpty().withMessage('User ID is required')
+], validateRequest, formsController.transferOwnership);
 
 router.get('/:id', authenticate, formsController.getFormById);
 

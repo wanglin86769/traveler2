@@ -1,6 +1,7 @@
 const { Form, FormFile } = require('../models/Form');
 const { ReleasedForm } = require('../models/ReleasedForm');
 const { History } = require('../models/History');
+const { User } = require('../models/User');
 const { getUserAccessLevel } = require('../middleware/accessControl');
 const ApiError = require('../utils/ApiError');
 const multer = require('multer');
@@ -41,11 +42,51 @@ const getDraftForms = async (req, res, next) => {
     const query = {
       archived: false,
       status: 0,
-      $or: [
-        { createdBy: req.user._id },
-        { owner: req.user._id },
-        { 'sharedWith.user': req.user._id }
-      ]
+      createdBy: req.user._id,
+      owner: { $exists: false }  // Exclude transferred forms (v1 compatibility)
+    };
+
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const forms = await Form.find(query)
+      .populate('createdBy', '_id name')
+      .populate('owner', '_id name')
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Form.countDocuments(query);
+
+    res.json({
+      data: forms,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTransferredForms = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, sort = '-updatedOn' } = req.query;
+    
+    const query = {
+      archived: false,
+      status: 0,
+      owner: req.user._id  // Forms transferred to current user
     };
 
     if (search) {
@@ -576,8 +617,51 @@ const uploadFormImage = async (req, res, next) => {
   }
 };
 
+const transferOwnership = async (req, res, next) => {
+  try {
+    const { formIds, userId } = req.body;
+    const currentUserId = req.user._id;
+
+    // Verify target user exists
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      throw new ApiError(404, 'Target user not found');
+    }
+
+    // Batch update form ownership
+    const result = await Form.updateMany(
+      {
+        _id: { $in: formIds },
+        $or: [
+          { owner: currentUserId }, // User is the current owner
+          { $and: [
+            { owner: { $exists: false } }, // No owner set yet
+            { createdBy: currentUserId }   // User is the creator
+          ]}
+        ]
+      },
+      {
+        owner: userId,
+        transferredOn: new Date()
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      throw new ApiError(400, 'No forms were transferred. Make sure you are the owner of the selected forms.');
+    }
+
+    res.json({
+      message: 'Ownership transferred successfully',
+      count: result.modifiedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDraftForms,
+  getTransferredForms,
   getUnderReviewForms,
   getClosedForms,
   getAllForms,
@@ -588,6 +672,7 @@ module.exports = {
   cloneForm,
   archiveForm,
   updateFormSharing,
+  transferOwnership,
   uploadFormImage,
   imageUpload
 };
