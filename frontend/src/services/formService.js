@@ -21,6 +21,10 @@ const formService = {
     return api.get('/forms/closed', { params })
   },
 
+  getArchivedForms: (params = {}) => {
+    return api.get('/forms/archived', { params })
+  },
+
   getReleasedForms: (params = {}) => {
     return api.get('/released-forms', { params })
   },
@@ -112,6 +116,7 @@ export const getDraftForms = formService.getDraftForms
 export const getTransferredForms = formService.getTransferredForms
 export const getUnderReviewForms = formService.getUnderReviewForms
 export const getMyReleasedForms = formService.getMyReleasedForms
+export const getArchivedForms = formService.getArchivedForms
 export const getReleasedForms = formService.getReleasedForms
 export const transferOwnership = formService.transferOwnership
 

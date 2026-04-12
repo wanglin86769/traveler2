@@ -216,6 +216,64 @@ const getClosedForms = async (req, res, next) => {
   }
 };
 
+const getArchivedForms = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, sort = '-updatedOn' } = req.query;
+
+    const query = {
+      $and: [
+        {
+          $or: [
+            {
+              createdBy: req.user._id,
+              owner: { $exists: false }
+            },
+            {
+              owner: req.user._id
+            }
+          ]
+        },
+        {
+          $or: [
+            { archived: true },
+            { status: 2 }
+          ]
+        }
+      ]
+    };
+
+    if (search) {
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const forms = await Form.find(query)
+      .populate('createdBy', '_id name')
+      .populate('owner', '_id name')
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Form.countDocuments(query);
+
+    res.json({
+      data: forms,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getAllForms = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status, search, tag, sort = '-updatedOn' } = req.query;
@@ -667,6 +725,7 @@ module.exports = {
   getTransferredForms,
   getUnderReviewForms,
   getClosedForms,
+  getArchivedForms,
   getAllForms,
   getFormById,
   createForm,

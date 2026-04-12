@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Avatar from '@mui/material/Avatar'
-import { getForms, createForm, getDraftForms, getTransferredForms, getUnderReviewForms, getReleasedForms, transferOwnership, cloneForm } from '@/services/formService'
+import { getForms, createForm, getDraftForms, getTransferredForms, getUnderReviewForms, getReleasedForms, getArchivedForms, transferOwnership, cloneForm } from '@/services/formService'
 import { getFormStatusLabel, getFormStatusColor } from '@/utils/status'
 import { useAuth } from '@/contexts/AuthContext'
 import TransferOwnershipDialog from '@/components/forms/TransferOwnershipDialog'
@@ -90,7 +90,8 @@ function MyForms() {
     { label: 'My Draft Forms', api: getDraftForms },
     { label: 'Transferred Draft Forms', api: getTransferredForms },
     { label: 'Under Review Forms', api: getUnderReviewForms },
-    { label: 'Approved And Released Forms', api: getReleasedForms }
+    { label: 'Approved And Released Forms', api: getReleasedForms },
+    { label: 'Archived Forms', api: getArchivedForms }
   ]
 
   // Fetch forms list using React Query

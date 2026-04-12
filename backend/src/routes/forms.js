@@ -14,6 +14,8 @@ router.get('/under-review', authenticate, formsController.getUnderReviewForms);
 
 router.get('/closed', authenticate, formsController.getClosedForms);
 
+router.get('/archived', authenticate, formsController.getArchivedForms);
+
 router.get('/', authenticate, formsController.getAllForms);
 
 router.put('/transfer', authenticate, [
