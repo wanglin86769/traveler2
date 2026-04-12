@@ -27,17 +27,17 @@ function Home() {
     {
       icon: <i className="fa fa-list-ol" style={{ fontSize: 240 }}></i>,
       label: 'Design',
-      path: '/forms'
+      path: '/forms/my-forms'
     },
     {
       icon: <i className="fa fa-check-square-o" style={{ fontSize: 240 }}></i>,
       label: 'Perform',
-      path: '/travelers'
+      path: '/travelers/my-travelers'
     },
     {
       icon: <i className="fa fa-briefcase" style={{ fontSize: 240 }}></i>,
       label: 'Organize',
-      path: '/binders'
+      path: '/binders/my-binders'
     }
   ]
 
