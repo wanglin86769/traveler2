@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useRef } from 'react'
 import { CircularProgress, Box } from '@mui/material'
+import { KeepAlive, AliveScope } from 'react-activation'
 import { useAuth } from './contexts/AuthContext'
 import MainLayout from './layouts/MainLayout'
 import AuthLayout from './layouts/AuthLayout'
@@ -66,56 +67,114 @@ function App() {
   }
 
   return (
-    <Routes>
-      {/* Authentication Routes */}
-      <Route element={<AuthLayout />}>
-        <Route path="/login" element={<Login />} />
-      </Route>
+    <AliveScope>
+      <Routes>
+        {/* Authentication Routes */}
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<Login />} />
+        </Route>
 
-      {/* Protected Routes */}
-      <Route element={<MainLayout />}>
-        <Route path="/" element={<Navigate to="/home" replace />} />
-        <Route path="/home" element={<Home />} />
-        <Route path="/docs" element={<Docs />} />
-
-        {/* Forms Routes */}
-        <Route path="/forms/my-forms" element={<MyForms />} />
-        <Route path="/forms/reviews" element={<MyForms />} />
-        <Route path="/forms/:id" element={<FormDetail />} />
-        <Route path="/forms/:id/edit" element={<FormBuilder />} />
-        <Route path="/forms/:id/preview" element={<FormPreview />} />
-        <Route path="/forms/:id/reviewers" element={<FormReviewerList />} />
-        <Route path="/forms/:id/review" element={<FormReview />} />
-        
-        {/* Released Forms Routes */}
-        <Route path="/released-forms" element={<ReleasedForms />} />
-        <Route path="/released-forms/:id" element={<ReleasedFormDetail />} />
-        
-        {/* Travelers Routes */}
-        <Route path="/travelers" element={<Travelers />} />
-        <Route path="/travelers/my-travelers" element={<Travelers />} />
-        <Route path="/travelers/:id" element={<TravelerDetail />} />
-        <Route path="/travelers/:id/input" element={<TravelerInput />} />
-        
-        {/* Binders Routes */}
-        <Route path="/binders" element={<Binders />} />
-        <Route path="/binders/my-binders" element={<Binders />} />
-        <Route path="/binders/:id" element={<BinderDetail />} />        
-        
         {/* User Profile Route */}
         <Route path="/profile" element={<Profile />} />
-        
-        {/* Reviews Routes */}
-        <Route path="/reviews/my-reviews" element={<MyReviews />} />
 
-        {/* Admin Route */}
-        <Route path="/admin/users" element={<User />} />
-        <Route path="/admin/groups" element={<Groups />} />
-      </Route>
+        {/* Protected Routes */}
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/docs" element={<Docs />} />
 
-      {/* 404 Not Found */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+          {/* Forms Routes */}
+          <Route path="/forms" element={
+            <KeepAlive 
+              cacheKey="forms-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <ReleasedForms />
+            </KeepAlive>
+          } />
+          <Route path="/forms/my-forms" element={
+            <KeepAlive 
+              cacheKey="my-forms-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <MyForms />
+            </KeepAlive>
+          } />
+          <Route path="/forms/:id" element={<FormDetail />} />
+          <Route path="/forms/:id/edit" element={<FormBuilder />} />
+          <Route path="/forms/:id/preview" element={<FormPreview />} />
+          <Route path="/forms/:id/reviewers" element={<FormReviewerList />} />
+          <Route path="/forms/:id/review" element={<FormReview />} />
+          
+          {/* Released Forms Routes */}
+          <Route path="/released-forms" element={
+            <KeepAlive 
+              cacheKey="released-forms-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <ReleasedForms />
+            </KeepAlive>
+          } />
+          <Route path="/released-forms/:id" element={<ReleasedFormDetail />} />
+          
+          {/* Travelers Routes */}
+          <Route path="/travelers" element={
+            <KeepAlive 
+              cacheKey="travelers-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <Travelers />
+            </KeepAlive>
+          } />
+          <Route path="/travelers/my-travelers" element={
+            <KeepAlive 
+              cacheKey="my-travelers-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <Travelers />
+            </KeepAlive>
+          } />
+          <Route path="/travelers/:id" element={<TravelerDetail />} />
+          <Route path="/travelers/:id/input" element={<TravelerInput />} />
+          
+          {/* Binders Routes */}
+          <Route path="/binders" element={
+            <KeepAlive 
+              cacheKey="binders-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <Binders />
+            </KeepAlive>
+          } />
+          <Route path="/binders/my-binders" element={
+            <KeepAlive 
+              cacheKey="my-binders-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <Binders />
+            </KeepAlive>
+          } />
+          <Route path="/binders/:id" element={<BinderDetail />} />          
+          
+          {/* Reviews Routes */}
+          <Route path="/reviews/my-reviews" element={<MyReviews />} />
+
+          {/* Admin Route */}
+          <Route path="/admin/users" element={<User />} />
+          <Route path="/admin/groups" element={<Groups />} />
+        </Route>
+
+        {/* 404 Not Found */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AliveScope>
   )
 }
 
