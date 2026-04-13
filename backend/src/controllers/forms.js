@@ -762,15 +762,10 @@ const getGroupSharedFormsList = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search, sort = '-updatedOn' } = req.query;
 
-    // Get user's groups
-    const user = await User.findById(req.user._id, 'memberOf');
-
-    if (!user) {
-      return res.status(400).json({ message: 'Cannot identify the current user' });
-    }
-
+    // Find all groups that the current user is a member of
     const groups = await Group.find({
-      _id: { $in: user.memberOf }
+      members: req.user._id,
+      deleted: { $ne: true }
     }).select('forms');
 
     // Merge all group forms, remove duplicates
