@@ -134,7 +134,7 @@ function App() {
           <Route path="/released-forms/:id" element={<ReleasedFormDetail />} />
           
           {/* Public Forms Routes */}
-          <Route path="/public-forms" element={
+          <Route path="/forms/public-forms" element={
             <KeepAlive 
               cacheKey="public-forms-page" 
               maxAge={10 * 60 * 1000}
