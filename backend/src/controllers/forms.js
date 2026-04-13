@@ -573,6 +573,11 @@ const archiveForm = async (req, res, next) => {
       throw new ApiError(404, 'Form not found');
     }
 
+    const accessLevel = await getUserAccessLevel(form, req.user);
+    if (accessLevel < 1) {
+      throw new ApiError(403, 'Not authorized');
+    }
+
     const isAdmin = req.user.roles && req.user.roles.includes('admin');
     if (form.owner !== req.user._id && !isAdmin) {
       throw new ApiError(403, 'Not authorized');
@@ -592,33 +597,6 @@ const archiveForm = async (req, res, next) => {
     });
 
     res.json({ message: 'Form archived successfully' });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const updateFormSharing = async (req, res, next) => {
-  try {
-    const { sharedWith, sharedGroup, publicAccess } = req.body;
-    
-    const form = await Form.findById(req.params.id);
-
-    if (!form) {
-      throw new ApiError(404, 'Form not found');
-    }
-
-    const isAdmin = req.user.roles && req.user.roles.includes('admin');
-    if (form.owner !== req.user._id && !isAdmin) {
-      throw new ApiError(403, 'Not authorized');
-    }
-
-    if (sharedWith !== undefined) form.sharedWith = sharedWith;
-    if (sharedGroup !== undefined) form.sharedGroup = sharedGroup;
-    if (publicAccess !== undefined) form.publicAccess = publicAccess;
-
-    await form.save();
-
-    res.json(form);
   } catch (error) {
     next(error);
   }
@@ -733,7 +711,6 @@ module.exports = {
   releaseForm,
   cloneForm,
   archiveForm,
-  updateFormSharing,
   transferOwnership,
   uploadFormImage,
   imageUpload

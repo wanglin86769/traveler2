@@ -47,7 +47,6 @@ function FormDetail() {
   const queryClient = useQueryClient()
   
   const [anchorEl, setAnchorEl] = useState(null)
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false)
   const [selectedDiscrepancyForm, setSelectedDiscrepancyForm] = useState(null)
   const [releaseTitle, setReleaseTitle] = useState('')
@@ -343,20 +342,10 @@ function FormDetail() {
             {archiveMutation.isPending ? 'Archiving...' : (isArchived ? 'Archived' : 'Archive')}
           </MenuItem>
         )}
-        <MenuItem onClick={() => { handleMenuClose(); setShareDialogOpen(true) }}>
+        <MenuItem onClick={() => { handleMenuClose(); navigate(`/forms/${id}/share`) }}>
           <ShareIcon sx={{ mr: 1 }} /> Share
         </MenuItem>
       </Menu>
-
-      <Dialog open={shareDialogOpen} onClose={() => setShareDialogOpen(false)}>
-        <DialogTitle>Share Form</DialogTitle>
-        <DialogContent>
-          <Typography>Sharing options coming soon...</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShareDialogOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
 
       <Dialog open={releaseDialogOpen} onClose={handleCancelRelease} maxWidth="lg" fullWidth>
         <DialogTitle>Release Form</DialogTitle>

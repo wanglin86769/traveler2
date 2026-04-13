@@ -14,6 +14,7 @@ import FormDetail from './pages/forms/FormDetail'
 import FormPreview from './pages/forms/FormPreview'
 import FormReviewerList from './pages/forms/FormReviewerList'
 import FormReview from './pages/forms/FormReview'
+import FormShare from './pages/forms/FormShare'
 import MyReviews from './pages/reviews/MyReviews'
 import ReleasedForms from './pages/released-forms/ReleasedForms'
 import ReleasedFormDetail from './pages/released-forms/ReleasedFormDetail'
@@ -104,6 +105,7 @@ function App() {
           } />
           <Route path="/forms/:id" element={<FormDetail />} />
           <Route path="/forms/:id/edit" element={<FormBuilder />} />
+          <Route path="/forms/:id/share" element={<FormShare />} />
           <Route path="/forms/:id/preview" element={<FormPreview />} />
           <Route path="/forms/:id/reviewers" element={<FormReviewerList />} />
           <Route path="/forms/:id/review" element={<FormReview />} />

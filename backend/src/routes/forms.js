@@ -37,8 +37,6 @@ router.post('/:id/clone', authenticate, formsController.cloneForm);
 
 router.put('/:id/archive', authenticate, formsController.archiveForm);
 
-router.put('/:id/share', authenticate, formsController.updateFormSharing);
-
 router.post('/:id/uploads', authenticate, formsController.imageUpload.single('file'), formsController.uploadFormImage);
 
 

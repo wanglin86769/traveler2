@@ -95,6 +95,39 @@ cloneForm: async (id, title) => {
 // Transfer ownership
   transferOwnership: (formIds, userId) => {
     return api.put('/forms/transfer', { formIds, userId })
+  },
+
+  // Share functions
+  getFormSharing: (id) => {
+    return api.get(`/forms/${id}/share`)
+  },
+
+  updatePublicAccess: (id, access) => {
+    return api.put(`/forms/${id}/share/public`, { access })
+  },
+
+  addUserToShare: (id, data) => {
+    return api.post(`/forms/${id}/share/users`, data)
+  },
+
+  updateUserShareAccess: (id, userId, access) => {
+    return api.put(`/forms/${id}/share/users/${userId}`, { access })
+  },
+
+  removeUserFromShare: (id, userId) => {
+    return api.delete(`/forms/${id}/share/users/${userId}`)
+  },
+
+  addGroupToShare: (id, data) => {
+    return api.post(`/forms/${id}/share/groups`, data)
+  },
+
+  updateGroupShareAccess: (id, groupId, access) => {
+    return api.put(`/forms/${id}/share/groups/${groupId}`, { access })
+  },
+
+  removeGroupFromShare: (id, groupId) => {
+    return api.delete(`/forms/${id}/share/groups/${groupId}`)
   }
 }
 
@@ -119,5 +152,13 @@ export const getMyReleasedForms = formService.getMyReleasedForms
 export const getArchivedForms = formService.getArchivedForms
 export const getReleasedForms = formService.getReleasedForms
 export const transferOwnership = formService.transferOwnership
+export const getFormSharing = formService.getFormSharing
+export const updatePublicAccess = formService.updatePublicAccess
+export const addUserToShare = formService.addUserToShare
+export const updateUserShareAccess = formService.updateUserShareAccess
+export const removeUserFromShare = formService.removeUserFromShare
+export const addGroupToShare = formService.addGroupToShare
+export const updateGroupShareAccess = formService.updateGroupShareAccess
+export const removeGroupFromShare = formService.removeGroupFromShare
 
 export default formService
