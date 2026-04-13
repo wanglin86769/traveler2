@@ -222,25 +222,39 @@ const getMyReviews = async (req, res, next) => {
     };
 
     const forms = await Form.find(query)
-      .select('-__review')
-      .populate('createdBy', '_id name')
       .sort({ updatedOn: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
+
+    // Get all unique creator IDs
+    const creatorIds = [...new Set(forms.map(form => form.createdBy).filter(Boolean))];
+    
+    // Fetch all creators in one query
+    const creators = await User.find(
+      { _id: { $in: creatorIds } },
+      '_id name'
+    ).lean();
+    
+    const creatorMap = {};
+    creators.forEach(creator => {
+      creatorMap[creator._id.toString()] = creator;
+    });
 
     const formsWithReview = await Promise.all(
       forms.map(async (form) => {
         const reviewRequests = form.__review?.reviewRequests || [];
         const reviewResults = form.__review?.reviewResults || [];
+        const currentUserId = req.user._id.toString();
         
-        const myRequest = reviewRequests.find(req => req._id === req.user._id);
+        const myRequest = reviewRequests.find(req => req._id.toString() === currentUserId);
         
         const myLatestResult = reviewResults
-          .filter(r => r.reviewerId === req.user._id)
+          .filter(r => r.reviewerId.toString() === currentUserId)
           .sort((a, b) => new Date(b.submittedOn) - new Date(a.submittedOn))[0];
 
         return {
           ...form.toObject(),
+          createdBy: creatorMap[form.createdBy] || null,
           __review: {
             reviewRequests,
             reviewResults
