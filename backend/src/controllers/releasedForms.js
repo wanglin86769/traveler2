@@ -74,7 +74,6 @@ const archiveReleasedForm = async (req, res, next) => {
     }
 
     form.status = 2;
-    form.archived = true;
     form.archivedOn = Date.now();
     form.archivedBy = req.user._id;
     await form.save();

@@ -276,8 +276,113 @@ const getArchivedForms = async (req, res, next) => {
 
 const getAllForms = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, status, search, tag, sort = '-updatedOn' } = req.query;
-    
+    const { page = 1, limit = 20, status, search, tag, sort = '-updatedOn', adminTab } = req.query;
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+
+    // Check if this is an admin tab request
+    if (adminTab && isAdmin) {
+      if (adminTab === 'submitted') {
+        // Submitted forms: status = 0.5 (under review)
+        const query = {
+          status: 0.5,
+          archived: { $ne: true }
+        };
+
+        if (search) {
+          query.$and = query.$and || [];
+          query.$and.push({
+            $or: [
+              { title: { $regex: search, $options: 'i' } },
+              { description: { $regex: search, $options: 'i' } }
+            ]
+          });
+        }
+
+        const forms = await Form.find(query)
+          .select('title formType status tags version __review')
+          .sort(sort)
+          .skip((page - 1) * limit)
+          .limit(parseInt(limit));
+
+        const total = await Form.countDocuments(query);
+
+        return res.json({
+          data: forms,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            pages: Math.ceil(total / limit)
+          }
+        });
+      } else if (adminTab === 'released') {
+        // Released forms: status = 1
+        const query = { status: 1 };
+
+        if (search) {
+          query.$and = query.$and || [];
+          query.$and.push({
+            $or: [
+              { title: { $regex: search, $options: 'i' } },
+              { description: { $regex: search, $options: 'i' } }
+            ]
+          });
+        }
+
+        const forms = await ReleasedForm.find(query)
+          .populate('releasedBy', '_id name')
+          .select('title formType status tags version releasedBy releasedOn')
+          .sort(sort)
+          .skip((page - 1) * limit)
+          .limit(parseInt(limit));
+
+        const total = await ReleasedForm.countDocuments(query);
+
+        return res.json({
+          data: forms,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            pages: Math.ceil(total / limit)
+          }
+        });
+      } else if (adminTab === 'archived') {
+        // Archived forms: status = 2
+        const query = { status: 2 };
+
+        if (search) {
+          query.$and = query.$and || [];
+          query.$and.push({
+            $or: [
+              { title: { $regex: search, $options: 'i' } },
+              { description: { $regex: search, $options: 'i' } }
+            ]
+          });
+        }
+
+        const forms = await ReleasedForm.find(query)
+          .populate('archivedBy', '_id name')
+          .select('title formType status tags version archivedBy archivedOn')
+          .sort(sort)
+          .skip((page - 1) * limit)
+          .limit(parseInt(limit));
+
+        const total = await ReleasedForm.countDocuments(query);
+
+        return res.json({
+          data: forms,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            pages: Math.ceil(total / limit)
+          }
+        });
+      }
+    }
+
+    // Regular getAllForms logic (non-admin or no adminTab)
     const query = { archived: false };
     
     const accessFilter = {
@@ -289,7 +394,6 @@ const getAllForms = async (req, res, next) => {
       ]
     };
 
-    const isAdmin = req.user.roles && req.user.roles.includes('admin');
     const isManager = req.user.roles && req.user.roles.includes('manager');
 
     if (isAdmin || isManager) {
@@ -583,8 +687,8 @@ const archiveForm = async (req, res, next) => {
       throw new ApiError(403, 'Not authorized');
     }
 
+    // 根据原版 traveler 的设计，Form 模型的归档只设置 archived 字段，不设置 status
     form.archived = true;
-    form.status = 2;
     form.archivedOn = Date.now();
     form.archivedBy = req.user._id;
     await form.save();

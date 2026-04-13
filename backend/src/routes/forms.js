@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { validateRequest } = require('../middleware/validation');
 const ApiError = require('../utils/ApiError');
 const formsController = require('../controllers/forms');
@@ -21,6 +21,8 @@ router.get('/closed', authenticate, formsController.getClosedForms);
 router.get('/archived', authenticate, formsController.getArchivedForms);
 
 router.get('/public', authenticate, formsController.getPublicForms);
+
+router.get('/all', authenticate, authorize('admin'), formsController.getAllForms);
 
 router.get('/', authenticate, formsController.getAllForms);
 

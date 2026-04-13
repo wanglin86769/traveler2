@@ -9,6 +9,8 @@ import AuthLayout from './layouts/AuthLayout'
 import Login from './pages/auth/Login'
 import Home from './pages/Home'
 import MyForms from './pages/forms/MyForms'
+import PublicForms from './pages/forms/PublicForms'
+import AllForms from './pages/forms/AllForms'
 import FormBuilder from './pages/forms/FormBuilder'
 import FormDetail from './pages/forms/FormDetail'
 import FormPreview from './pages/forms/FormPreview'
@@ -18,7 +20,6 @@ import FormShare from './pages/forms/FormShare'
 import MyReviews from './pages/reviews/MyReviews'
 import ReleasedForms from './pages/released-forms/ReleasedForms'
 import ReleasedFormDetail from './pages/released-forms/ReleasedFormDetail'
-import PublicForms from './pages/forms/PublicForms'
 import Travelers from './pages/travelers/Travelers'
 import TravelerDetail from './pages/travelers/TravelerDetail'
 import TravelerInput from './pages/travelers/TravelerInput'
@@ -102,6 +103,15 @@ function App() {
               autoFreeze={false}
             >
               <MyForms />
+            </KeepAlive>
+          } />
+          <Route path="/forms/all-forms" element={
+            <KeepAlive 
+              cacheKey="all-forms-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <AllForms />
             </KeepAlive>
           } />
           <Route path="/forms/:id" element={<FormDetail />} />

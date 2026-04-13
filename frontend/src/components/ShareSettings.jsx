@@ -193,7 +193,7 @@ const ShareSettings = ({ type, id, title, getItem }) => {
       <Box>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(`/${type}s/${id}`)}
+          onClick={() => navigate(-1)}
           sx={{ mb: 2 }}
           variant="outlined"
         >

@@ -9,9 +9,17 @@ import { ExpandMore, ExpandLess } from '@mui/icons-material'
 function MenuItemRenderer({ item, isMobile, handleNavigation, isActive, hasRole }) {
   const [isMenuOpen, setMenuOpen] = useState(false)
 
+  // Check if this item has adminOnly restriction
+  if (item.adminOnly && !hasRole(['admin'])) {
+    return null
+  }
+
   // Check if this item has children (submenu)
   if (item.children) {
-    const hasAccessibleChild = item.children.some(child => !child.roles || hasRole(child.roles))
+    const hasAccessibleChild = item.children.some(child => {
+      if (child.adminOnly && !hasRole(['admin'])) return false
+      return !child.roles || hasRole(child.roles)
+    })
     if (!hasAccessibleChild) return null
 
     const isSubmenuActive = item.children.some(child => isActive(child.path))
@@ -33,6 +41,7 @@ function MenuItemRenderer({ item, isMobile, handleNavigation, isActive, hasRole 
           {isMenuOpen && (
             <List sx={{ pl: 3 }}>
               {item.children.map((child) => {
+                if (child.adminOnly && !hasRole(['admin'])) return null
                 if (child.roles && !hasRole(child.roles)) return null
                 return (
                   <ListItem key={child.text} disablePadding>
@@ -117,6 +126,7 @@ function MenuItemRenderer({ item, isMobile, handleNavigation, isActive, hasRole 
           }}
         >
           {item.children.map((child) => {
+            if (child.adminOnly && !hasRole(['admin'])) return null
             if (child.roles && !hasRole(child.roles)) return null
             return (
               <MenuItem

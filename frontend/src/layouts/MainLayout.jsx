@@ -54,7 +54,7 @@ const menuItems = [
       { text: 'Public Forms', icon: <PublicIcon />, path: '/public-forms' },
       { text: 'Released Forms', icon: <PublishIcon />, path: '/released-forms' },
       { text: 'Pending Reviews', icon: <ReviewIcon />, path: '/reviews/my-reviews' },
-      { text: 'All Forms', icon: <LibraryIcon />, path: '/released-forms' }
+      { text: 'All Forms', icon: <LibraryIcon />, path: '/forms/all-forms', adminOnly: true }
     ]
   },
   {
