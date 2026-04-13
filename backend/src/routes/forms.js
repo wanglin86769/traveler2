@@ -20,6 +20,8 @@ router.get('/closed', authenticate, formsController.getClosedForms);
 
 router.get('/archived', authenticate, formsController.getArchivedForms);
 
+router.get('/public', authenticate, formsController.getPublicForms);
+
 router.get('/', authenticate, formsController.getAllForms);
 
 router.put('/transfer', authenticate, [

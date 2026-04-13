@@ -33,6 +33,10 @@ const formService = {
     return api.get('/forms/group-shared', { params })
   },
 
+  getPublicForms: (params = {}) => {
+    return api.get('/forms/public', { params })
+  },
+
   getReleasedForms: (params = {}) => {
     return api.get('/released-forms', { params })
   },
@@ -129,6 +133,7 @@ export const getArchivedForms = formService.getArchivedForms
 export const getReleasedForms = formService.getReleasedForms
 export const getSharedForms = formService.getSharedForms
 export const getGroupSharedForms = formService.getGroupSharedForms
+export const getPublicForms = formService.getPublicForms
 export const transferOwnership = formService.transferOwnership
 
 export default formService

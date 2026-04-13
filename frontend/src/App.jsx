@@ -18,6 +18,7 @@ import FormShare from './pages/forms/FormShare'
 import MyReviews from './pages/reviews/MyReviews'
 import ReleasedForms from './pages/released-forms/ReleasedForms'
 import ReleasedFormDetail from './pages/released-forms/ReleasedFormDetail'
+import PublicForms from './pages/forms/PublicForms'
 import Travelers from './pages/travelers/Travelers'
 import TravelerDetail from './pages/travelers/TravelerDetail'
 import TravelerInput from './pages/travelers/TravelerInput'
@@ -121,6 +122,17 @@ function App() {
             </KeepAlive>
           } />
           <Route path="/released-forms/:id" element={<ReleasedFormDetail />} />
+          
+          {/* Public Forms Routes */}
+          <Route path="/public-forms" element={
+            <KeepAlive 
+              cacheKey="public-forms-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <PublicForms />
+            </KeepAlive>
+          } />
           
           {/* Travelers Routes */}
           <Route path="/travelers" element={

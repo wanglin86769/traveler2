@@ -817,6 +817,57 @@ const getGroupSharedFormsList = async (req, res, next) => {
   }
 };
 
+// Get public forms (for Public Forms page)
+const getPublicForms = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, sort = '-updatedOn', status } = req.query;
+
+    // Build query - only forms with public access
+    const query = {
+      publicAccess: { $in: [0, 1] },  // 0 = public read, 1 = public write
+      archived: { $ne: true }
+    };
+
+    // Filter by status if provided (0 = draft, 1 = released)
+    if (status !== undefined) {
+      query.status = parseInt(status);
+    }
+
+    // Add search filter if provided
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const forms = await Form.find(query)
+      .populate('createdBy', '_id name')
+      .populate('owner', '_id name')
+      .select('title formType status tags owner updatedBy updatedOn publicAccess sharedWith sharedGroup createdBy version')
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Form.countDocuments(query);
+
+    res.json({
+      data: forms,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDraftForms,
   getTransferredForms,
@@ -834,5 +885,6 @@ module.exports = {
   uploadFormImage,
   imageUpload,
   getSharedFormsList,
-  getGroupSharedFormsList
+  getGroupSharedFormsList,
+  getPublicForms
 };
