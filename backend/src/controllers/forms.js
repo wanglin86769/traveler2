@@ -1,7 +1,7 @@
 const { Form, FormFile } = require('../models/Form');
 const { ReleasedForm } = require('../models/ReleasedForm');
 const { History } = require('../models/History');
-const { User } = require('../models/User');
+const { User, Group } = require('../models/User');
 const { getUserAccessLevel } = require('../middleware/accessControl');
 const ApiError = require('../utils/ApiError');
 const multer = require('multer');
@@ -698,6 +698,130 @@ const transferOwnership = async (req, res, next) => {
   }
 };
 
+// Get forms shared with the current user (for Shared Draft Forms tab)
+const getSharedFormsList = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, sort = '-updatedOn' } = req.query;
+
+    const user = await User.findById(req.user._id, 'forms');
+
+    if (!user) {
+      return res.status(400).json({ message: 'Cannot identify the current user' });
+    }
+
+    // Filter out invalid ObjectIds
+    const validFormIds = (user.forms || []).filter(id => {
+      try {
+        return require('mongoose').Types.ObjectId.isValid(id);
+      } catch (e) {
+        return false;
+      }
+    });
+
+    // Build query
+    const query = {
+      _id: { $in: validFormIds },
+      archived: { $ne: true }
+    };
+
+    // Add search filter if provided
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const forms = await Form.find(query)
+      .select('title formType status tags owner updatedBy updatedOn publicAccess sharedWith sharedGroup')
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Form.countDocuments(query);
+
+    res.json({
+      data: forms,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get forms shared with the current user's groups (for Group Shared Draft Forms tab)
+const getGroupSharedFormsList = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, sort = '-updatedOn' } = req.query;
+
+    // Get user's groups
+    const user = await User.findById(req.user._id, 'memberOf');
+
+    if (!user) {
+      return res.status(400).json({ message: 'Cannot identify the current user' });
+    }
+
+    const groups = await Group.find({
+      _id: { $in: user.memberOf }
+    }).select('forms');
+
+    // Merge all group forms, remove duplicates
+    const formIds = [];
+    for (const group of groups) {
+      for (const formId of group.forms) {
+        if (!formIds.includes(formId)) {
+          formIds.push(formId);
+        }
+      }
+    }
+
+    // Build query
+    const query = {
+      _id: { $in: formIds },
+      archived: { $ne: true }
+    };
+
+    // Add search filter if provided
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const forms = await Form.find(query)
+      .select('title formType status tags owner updatedBy updatedOn publicAccess sharedWith sharedGroup')
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Form.countDocuments(query);
+
+    res.json({
+      data: forms,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDraftForms,
   getTransferredForms,
@@ -713,5 +837,7 @@ module.exports = {
   archiveForm,
   transferOwnership,
   uploadFormImage,
-  imageUpload
+  imageUpload,
+  getSharedFormsList,
+  getGroupSharedFormsList
 };

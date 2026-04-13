@@ -10,6 +10,10 @@ router.get('/draft', authenticate, formsController.getDraftForms);
 
 router.get('/transferred', authenticate, formsController.getTransferredForms);
 
+router.get('/shared', authenticate, formsController.getSharedFormsList);
+
+router.get('/group-shared', authenticate, formsController.getGroupSharedFormsList);
+
 router.get('/under-review', authenticate, formsController.getUnderReviewForms);
 
 router.get('/closed', authenticate, formsController.getClosedForms);
