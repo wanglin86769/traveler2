@@ -24,7 +24,10 @@ import {
   MenuItem,
   Checkbox,
   CircularProgress,
-  IconButton
+  IconButton,
+  List,
+  ListItem,
+  ListItemText
 } from '@mui/material'
 import {
   Refresh as RefreshIcon,
@@ -152,6 +155,8 @@ function ReleasedForms() {
         severity: 'success' 
       })
       handleRefresh()
+      // Invalidate travelers query cache to display latest data on other pages
+      queryClient.invalidateQueries({ queryKey: ['travelers'] })
     },
     onError: (error) => {
       setSnackbar({ 
@@ -408,9 +413,30 @@ function ReleasedForms() {
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)}>
         <DialogTitle>Create Traveler</DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography sx={{ mb: 2 }}>
             Are you sure you want to create traveler(s) from {selectedForms.length} selected form(s)?
           </Typography>
+          <Box sx={{ 
+            bgcolor: 'grey.50', 
+            border: 1, 
+            borderColor: 'grey.200',
+            borderRadius: 1,
+            maxHeight: 200,
+            overflow: 'auto'
+          }}>
+            <List dense>
+              {items.filter(item => selectedForms.includes(item._id)).map((item) => (
+                <ListItem key={item._id}>
+                  <ListItemText 
+                    primary={<><span style={{ fontSize: '18px', fontWeight: 'bold' }}>·</span> {item.title}</>}
+                    primaryTypographyProps={{ 
+                      sx: { fontFamily: 'monospace' }
+                    }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateDialogOpen(false)}>
@@ -431,9 +457,30 @@ function ReleasedForms() {
       <Dialog open={cloneDialogOpen} onClose={() => setCloneDialogOpen(false)}>
         <DialogTitle>Clone Forms</DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography sx={{ mb: 2 }}>
             Are you sure you want to clone {selectedForms.length} selected form(s)?
           </Typography>
+          <Box sx={{ 
+            bgcolor: 'grey.50', 
+            border: 1, 
+            borderColor: 'grey.200',
+            borderRadius: 1,
+            maxHeight: 200,
+            overflow: 'auto'
+          }}>
+            <List dense>
+              {items.filter(item => selectedForms.includes(item._id)).map((item) => (
+                <ListItem key={item._id}>
+                  <ListItemText 
+                    primary={<><span style={{ fontSize: '18px', fontWeight: 'bold' }}>·</span> {item.title}</>}
+                    primaryTypographyProps={{ 
+                      sx: { fontFamily: 'monospace' }
+                    }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCloneDialogOpen(false)}>
