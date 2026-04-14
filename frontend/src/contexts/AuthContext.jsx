@@ -1,6 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import authService from '@/services/authService'
 
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  Box
+} from '@mui/material'
+
+import {
+  Warning as WarningIcon
+} from '@mui/icons-material'
+
 const AuthContext = createContext(null)
 
 export const useAuth = () => {
@@ -17,7 +31,55 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [tokenExpiring, setTokenExpiring] = useState(false)
   const isInitializingRef = useRef(false)
+  const expiryCheckTimerRef = useRef(null)
+
+  // Parse JWT token to get expiry time
+  const parseTokenExpiry = (token) => {
+    try {
+      const base64Url = token.split('.')[1]
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      )
+      const decoded = JSON.parse(jsonPayload)
+      
+      if (!decoded.exp) {
+        console.warn('Token does not contain exp field')
+        return null
+      }
+      
+      return decoded.exp * 1000 // Convert to milliseconds
+    } catch (error) {
+      console.error('Failed to parse token expiry:', error)
+      return null
+    }
+  }
+
+  // Check if token is expiring (less than 1 minute remaining)
+  const checkTokenExpiry = (expiryTime) => {
+    if (!expiryTime) return
+
+    const now = Date.now()
+    const timeRemaining = expiryTime - now
+
+    // Less than 1 minute remaining or already expired
+    if (timeRemaining <= 60 * 1000) {
+      setTokenExpiring(true)
+    }
+  }
+
+  // Handle force logout
+  const handleForceLogout = () => {
+    // Close dialog first
+    setTokenExpiring(false)
+    // Then perform logout
+    logout()
+  }
 
   // Initialize: read token from localStorage
   useEffect(() => {
@@ -110,6 +172,41 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Token expiry monitoring
+  useEffect(() => {
+    if (!token) {
+      // Clean up timer when no token
+      if (expiryCheckTimerRef.current) {
+        clearInterval(expiryCheckTimerRef.current)
+        expiryCheckTimerRef.current = null
+      }
+      return
+    }
+
+    const expiryTime = parseTokenExpiry(token)
+    if (!expiryTime) {
+      // Invalid token, logout
+      handleForceLogout()
+      return
+    }
+
+    // Immediately check token expiry (for page refresh detection)
+    checkTokenExpiry(expiryTime)
+
+    // Set up periodic check every 30 seconds
+    expiryCheckTimerRef.current = setInterval(() => {
+      checkTokenExpiry(expiryTime)
+    }, 30 * 1000) // 30 seconds = 30000ms
+
+    // Clean up timer on unmount or token change
+    return () => {
+      if (expiryCheckTimerRef.current) {
+        clearInterval(expiryCheckTimerRef.current)
+        expiryCheckTimerRef.current = null
+      }
+    }
+  }, [token])
+
   const value = {
     user,
     token,
@@ -122,7 +219,39 @@ export const AuthProvider = ({ children }) => {
     setError,
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      
+      {/* Token Expiry Dialog */}
+      <Dialog 
+        open={tokenExpiring}
+        disableEscapeKeyDown={true}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="warning" />
+          Session Expiration Notice
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            Your login session is about to expire, please logout and login.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={handleForceLogout}
+            variant="contained"
+            sx={{ bgcolor: '#FF9800', '&:hover': { bgcolor: '#FB8C00' } }}
+            startIcon={<WarningIcon />}
+          >
+            LOGOUT NOW
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </AuthContext.Provider>
+  )
 }
 
 export default AuthContext
