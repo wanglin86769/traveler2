@@ -94,6 +94,14 @@ const formService = {
     return api.get(`/released-forms/${id}`)
   },
 
+  getArchivedReleasedForms: (params = {}) => {
+    return api.get('/released-forms/archived', { params })
+  },
+
+  archiveReleasedForm: (id) => {
+    return api.put(`/released-forms/${id}/archive`)
+  },
+
   // Reviews
   getMyReviews: (params = {}) => {
     return api.get('/reviews/forms/my-reviews', { params })
@@ -134,6 +142,8 @@ export const getReleasedForms = formService.getReleasedForms
 export const getSharedForms = formService.getSharedForms
 export const getGroupSharedForms = formService.getGroupSharedForms
 export const getPublicForms = formService.getPublicForms
+export const getArchivedReleasedForms = formService.getArchivedReleasedForms
+export const archiveReleasedForm = formService.archiveReleasedForm
 export const transferOwnership = formService.transferOwnership
 
 export default formService

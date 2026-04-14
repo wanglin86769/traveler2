@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
   Button,
   Table,
@@ -11,51 +9,77 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination,
   Chip,
-  TextField,
-  InputAdornment,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Snackbar,
   Alert,
-  Checkbox
+  Card,
+  CardContent,
+  Tab,
+  Tabs,
+  TextField,
+  MenuItem,
+  Checkbox,
+  CircularProgress,
+  IconButton
 } from '@mui/material'
 import {
-  Search as SearchIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Visibility as ViewIcon,
+  ContentCopy as CloneIcon,
+  ArchiveOutlined as ArchiveIcon
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import formService from '@/services/formService'
 import travelerService from '@/services/travelerService'
 
 function ReleasedForms() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [search, setSearch] = useState('')
+  const [currentTab, setCurrentTab] = useState(0)
   
-  const [forms, setForms] = useState([])
-  const [loading, setLoading] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false)
   const [selectedForms, setSelectedForms] = useState([])
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
+  const [isReloading, setIsReloading] = useState(false)
 
-  useEffect(() => {
-    const fetchForms = async () => {
-      setLoading(true)
-          try {
-            const data = await formService.getMyReleasedForms()
-            setForms(data?.data || [])
-          } catch (error) {
-            console.error('Failed to fetch released forms:', error)
-          } finally {
-            setLoading(false)
-          }    }
-    fetchForms()
-  }, [])
+  const tabs = [
+    { label: 'Released forms', status: 'released' },
+    { label: 'Archived released forms', status: 'archived' }
+  ]
+
+  // Get released forms
+  const { data: releasedData, isLoading: releasedLoading } = useQuery({
+    queryKey: ['released-forms', { page: page + 1, limit: rowsPerPage }],
+    queryFn: () => formService.getReleasedForms({ page: page + 1, limit: rowsPerPage }),
+    enabled: currentTab === 0
+  })
+
+  // Get archived released forms
+  const { data: archivedData, isLoading: archivedLoading } = useQuery({
+    queryKey: ['archived-released-forms', { page: page + 1, limit: rowsPerPage }],
+    queryFn: () => formService.getArchivedReleasedForms({ page: page + 1, limit: rowsPerPage }),
+    enabled: currentTab === 1
+  })
+
+  const items = currentTab === 0 ? (releasedData?.data || []) : (archivedData?.data || [])
+  const pagination = currentTab === 0 ? (releasedData?.pagination || { total: 0 }) : (archivedData?.pagination || { total: 0 })
+  const isLoading = currentTab === 0 ? releasedLoading : archivedLoading
+
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue)
+    setPage(0)
+    setSelectedForms([])
+  }
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage)
@@ -67,15 +91,10 @@ function ReleasedForms() {
   }
 
   const handleRefresh = async () => {
-    setLoading(true)
-    try {
-      const data = await formService.getMyReleasedForms()
-      setForms(data?.data || [])
-    } catch (error) {
-      console.error('Failed to refresh forms:', error)
-    } finally {
-      setLoading(false)
-    }
+    setIsReloading(true)
+    await queryClient.invalidateQueries({ queryKey: ['released-forms'] })
+    await queryClient.invalidateQueries({ queryKey: ['archived-released-forms'] })
+    setTimeout(() => setIsReloading(false), 500)
   }
 
   const handleSelectForm = (formId, checked) => {
@@ -87,12 +106,10 @@ function ReleasedForms() {
   }
 
   const handleSelectAll = (checked) => {
-    const currentForms = filteredForms.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
     if (checked) {
-      const newSelected = [...new Set([...selectedForms, ...currentForms.map(f => f._id)])]
-      setSelectedForms(newSelected)
+      setSelectedForms(items.map(f => f._id))
     } else {
-      setSelectedForms(selectedForms.filter(id => !currentForms.find(f => f._id === id)))
+      setSelectedForms([])
     }
   }
 
@@ -108,11 +125,25 @@ function ReleasedForms() {
     setCreateDialogOpen(true)
   }
 
-  const handleConfirmCreate = async () => {
-    try {
+  const handleCloneForms = () => {
+    if (selectedForms.length === 0) {
+      setSnackbar({ 
+        open: true, 
+        message: 'Please select at least one form to clone', 
+        severity: 'warning' 
+      })
+      return
+    }
+    setCloneDialogOpen(true)
+  }
+
+  const createTravelerMutation = useMutation({
+    mutationFn: async () => {
       for (const formId of selectedForms) {
         await travelerService.createTraveler({ form: formId })
       }
+    },
+    onSuccess: () => {
       setCreateDialogOpen(false)
       setSelectedForms([])
       setSnackbar({ 
@@ -120,162 +151,207 @@ function ReleasedForms() {
         message: `Successfully created ${selectedForms.length} traveler(s)!`, 
         severity: 'success' 
       })
-      await handleRefresh()
-    } catch (error) {
-      console.error('Failed to create traveler:', error)
+      handleRefresh()
+    },
+    onError: (error) => {
       setSnackbar({ 
         open: true, 
         message: 'Failed to create traveler: ' + (error.response?.data?.message || error.message), 
         severity: 'error' 
       })
     }
-  }
+  })
 
-  const filteredForms = forms.filter(f => !search || f.title.toLowerCase().includes(search.toLowerCase()))
-  const currentForms = filteredForms.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-  const allSelected = currentForms.length > 0 && currentForms.every(f => selectedForms.includes(f._id))
+  const cloneFormsMutation = useMutation({
+    mutationFn: async () => {
+      for (const formId of selectedForms) {
+        await formService.cloneForm(formId, `${items.find(f => f._id === formId)?.title} clone`)
+      }
+    },
+    onSuccess: () => {
+      setCloneDialogOpen(false)
+      setSelectedForms([])
+      setSnackbar({ 
+        open: true, 
+        message: `Successfully cloned ${selectedForms.length} form(s)!`, 
+        severity: 'success' 
+      })
+      handleRefresh()
+    },
+    onError: (error) => {
+      setSnackbar({ 
+        open: true, 
+        message: 'Failed to clone form(s): ' + (error.response?.data?.message || error.message), 
+        severity: 'error' 
+      })
+    }
+  })
+
+  const allSelected = items.length > 0 && selectedForms.length === items.length
 
   return (
-    <Box sx={{ p: 2 }}>
-      {/* First row action buttons */}
-      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-        <Button variant="contained" size="small">
-          Clone
-        </Button>
-        <Button variant="contained" size="small" sx={{ bgcolor: '#4DB6AC', '&:hover': { bgcolor: '#3D9E92' } }}>
-          All public forms
-        </Button>
-        <Button variant="contained" size="small" sx={{ bgcolor: '#4DB6AC', '&:hover': { bgcolor: '#3D9E92' } }}>
-          Reload all tables
-        </Button>
-      </Box>
-
-      {/* Tab switch */}
-      <Box sx={{ display: 'flex', mb: 2 }}>
-        <Box sx={{ 
-          bgcolor: '#FFFFFF', 
-          px: 2, 
-          py: 1, 
-          border: '1px solid #E0E0E0',
-          borderBottom: 'none',
-          borderTopLeftRadius: 1,
-          borderTopRightRadius: 1
-        }}>
-          <Typography variant="body1">Released forms</Typography>
-        </Box>
-        <Box sx={{ 
-          bgcolor: '#F8F9FA', 
-          px: 2, 
-          py: 1, 
-          border: '1px solid #E0E0E0',
-          color: '#1976D2',
-          cursor: 'pointer'
-        }}>
-          <Typography variant="body1">Archived released forms</Typography>
-        </Box>
-      </Box>
-
-      {/* Second row action buttons */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" fontWeight={600}>
+          Released Forms
+        </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button 
-            variant="contained" 
-            size="small" 
-            sx={{ bgcolor: '#4DB6AC', '&:hover': { bgcolor: '#3D9E92' } }}
-            startIcon={<RefreshIcon />}
-            onClick={handleRefresh}
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<CloneIcon />}
+            onClick={handleCloneForms}
+            disabled={selectedForms.length === 0}
           >
-            Reload table
+            Clone
           </Button>
-          <Button 
-            variant="contained" 
-            size="small" 
-            sx={{ bgcolor: '#0D47A1', '&:hover': { bgcolor: '#0A3578' } }}
-            onClick={handleCreateTraveler}
-          >
-            <i className="fa fa-plane" style={{ marginRight: 8 }}></i>
-            Travel
-          </Button>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="body2">10 records per page</Typography>
         </Box>
       </Box>
 
-      {/* Search box */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="body2">Search:</Typography>
-          <TextField
-            size="small"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            sx={{ width: 200 }}
-          />
-        </Box>
-      </Box>
-
-      {/* Table */}
       <Card>
-        <CardContent sx={{ p: 0 }}>
+        <CardContent>
+          <Tabs value={currentTab} onChange={handleTabChange}>
+            {tabs.map((tab, index) => (
+              <Tab key={index} label={tab.label} sx={{ textTransform: 'none' }} />
+            ))}
+          </Tabs>
+
+          {/* Action button group */}
+          <Box sx={{ display: 'flex', gap: 1, mt: 3, mb: 2 }}>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={isReloading ? <CircularProgress size={16} sx={{ color: 'white' }} /> : <RefreshIcon />}
+              sx={{ bgcolor: '#4CAF50', '&:hover': { bgcolor: '#388E3C' } }}
+              onClick={handleRefresh}
+              disabled={isReloading}
+            >
+              {isReloading ? 'Reloading...' : 'Reload table'}
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              sx={{ bgcolor: '#2196F3', '&:hover': { bgcolor: '#1976D2' } }}
+              onClick={handleCreateTraveler}
+              disabled={selectedForms.length === 0}
+            >
+              <i className="fa fa-plane" style={{ marginRight: 8 }}></i>
+              Travel
+            </Button>
+          </Box>
+
+          {/* Action bar: left side item count config, right side search box */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                select
+                size="small"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10))
+                  setPage(0)
+                }}
+                sx={{ width: 80, height: '32px' }}
+                InputProps={{ sx: { height: '32px' } }}
+              >
+                <MenuItem value={10}>10</MenuItem>
+                <MenuItem value={25}>25</MenuItem>
+                <MenuItem value={50}>50</MenuItem>
+                <MenuItem value={100}>100</MenuItem>
+              </TextField>
+              <Typography variant="body2">Rows per page</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2">Search:</Typography>
+              <TextField
+                size="small"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                sx={{ width: 200, height: '32px' }}
+                InputProps={{ sx: { height: '32px' } }}
+              />
+            </Box>
+          </Box>
+
+          {/* Table */}
           <TableContainer>
-            <Table size="small">
+            <Table sx={{ border: '1px solid #E0E0E0' }} size="small">
               <TableHead>
-                <TableRow sx={{ bgcolor: '#FAFAFA' }}>
-                  <TableCell padding="checkbox" sx={{ width: 40 }}>
+                <TableRow sx={{ backgroundColor: '#FAFAFA' }}>
+                  <TableCell padding="checkbox" sx={{ border: '1px solid #E0E0E0', width: 40 }}>
                     <Checkbox
                       checked={allSelected}
                       indeterminate={selectedForms.length > 0 && !allSelected}
                       onChange={(e) => handleSelectAll(e.target.checked)}
                     />
                   </TableCell>
-                  <TableCell sx={{ width: 40 }}></TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Title</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Ver</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Tags</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Released by</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Released</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Title</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Status</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Type</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Ver</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Tags</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Released by</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Released</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {loading ? (
+                {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                      Loading...
-                    </TableCell>
+                    <TableCell colSpan={9} align="center" sx={{ border: '1px solid #E0E0E0' }}>Loading...</TableCell>
                   </TableRow>
-                ) : currentForms.length === 0 ? (
+                ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                      No released forms found
+                    <TableCell colSpan={9} align="center" sx={{ border: '1px solid #E0E0E0' }}>
+                      No {currentTab === 0 ? 'released' : 'archived'} forms found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  currentForms.map((form) => (
+                  items
+                    .filter(f => !search || f.title.toLowerCase().includes(search.toLowerCase()))
+                    .map((form) => (
                     <TableRow key={form._id} hover sx={{ bgcolor: selectedForms.includes(form._id) ? '#E3F2FD' : 'inherit' }}>
-                      <TableCell padding="checkbox">
+                      <TableCell padding="checkbox" sx={{ border: '1px solid #E0E0E0' }}>
                         <Checkbox
                           checked={selectedForms.includes(form._id)}
                           onChange={(e) => handleSelectForm(form._id, e.target.checked)}
                         />
                       </TableCell>
-                      <TableCell>
-                        <i
-                          className="fa fa-eye"
-                          style={{ color: '#757575', cursor: 'pointer' }}
-                          onClick={() => navigate(`/forms/${form._id}`)}
-                        ></i>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography fontWeight={500}>{form.title}</Typography>
                       </TableCell>
-                      <TableCell>{form.title}</TableCell>
-                      <TableCell>{form.status === 1 ? 'released' : 'draft'}</TableCell>
-                      <TableCell>{form.formType || 'normal'}</TableCell>
-                      <TableCell>{form.ver || '1'}</TableCell>
-                      <TableCell>{form.tags || ''}</TableCell>
-                      <TableCell>{form.releasedBy?.name || form.releasedBy || ''}</TableCell>
-                      <TableCell>
-                        {form.releasedOn ? new Date(form.releasedOn).toLocaleString() : ''}
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Chip
+                          label={currentTab === 0 ? 'released' : 'archived'}
+                          color={currentTab === 0 ? 'success' : 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">{form.formType || 'normal'}</Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">{form.ver || '1'}</Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">{form.tags || '-'}</Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">{form.releasedBy?.name || form.releasedBy || '-'}</Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">
+                          {form.releasedOn ? new Date(form.releasedOn).toLocaleString() : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => navigate(`/released-forms/${form._id}`)}
+                          sx={{ color: '#757575' }}
+                        >
+                          <ViewIcon />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))
@@ -283,32 +359,50 @@ function ReleasedForms() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* Bottom status bar */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Showing {pagination.total > 0 ? page * rowsPerPage + 1 : 0} to {Math.min((page + 1) * rowsPerPage, pagination.total)} of {pagination.total} entries
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.1 }}>
+              <Button
+                size="small"
+                onClick={() => handleChangePage(null, 0)}
+                disabled={page === 0}
+                sx={{ '&:hover:not(:disabled)': { backgroundColor: 'rgba(0, 0, 0, 0.08)' } }}
+              >
+                First
+              </Button>
+              <Button
+                size="small"
+                onClick={() => handleChangePage(null, page - 1)}
+                disabled={page === 0}
+                sx={{ '&:hover:not(:disabled)': { backgroundColor: 'rgba(0, 0, 0, 0.08)' } }}
+              >
+                Previous
+              </Button>
+              <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'center' }}>{page + 1}</Typography>
+              <Button
+                size="small"
+                onClick={() => handleChangePage(null, page + 1)}
+                disabled={(page + 1) * rowsPerPage >= pagination.total}
+                sx={{ '&:hover:not(:disabled)': { backgroundColor: 'rgba(0, 0, 0, 0.08)' } }}
+              >
+                Next
+              </Button>
+              <Button
+                size="small"
+                onClick={() => handleChangePage(null, Math.ceil(pagination.total / rowsPerPage) - 1)}
+                disabled={(page + 1) * rowsPerPage >= pagination.total}
+                sx={{ '&:hover:not(:disabled)': { backgroundColor: 'rgba(0, 0, 0, 0.08)' } }}
+              >
+                Last
+              </Button>
+            </Box>
+          </Box>
         </CardContent>
       </Card>
-
-      {/* Bottom status bar */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          Showing {filteredForms.length > 0 ? page * rowsPerPage + 1 : 0} to {Math.min((page + 1) * rowsPerPage, filteredForms.length)} of {filteredForms.length} entries
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <TablePagination
-            rowsPerPageOptions={[10, 25, 50, 100]}
-            component="div"
-            count={filteredForms.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            showFirstButton={false}
-            showLastButton={false}
-            labelDisplayedRows={() => ''}
-          />
-          <Typography variant="body2" sx={{ color: '#1976D2' }}>
-            Release 3.2.0
-          </Typography>
-        </Box>
-      </Box>
 
       {/* Create Traveler Dialog */}
       <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)}>
@@ -322,12 +416,36 @@ function ReleasedForms() {
           <Button onClick={() => setCreateDialogOpen(false)}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleConfirmCreate} 
+          <Button
+            onClick={() => createTravelerMutation.mutate()}
             variant="contained"
             color="primary"
+            disabled={createTravelerMutation.isPending}
           >
-            Confirm
+            {createTravelerMutation.isPending ? 'Creating...' : 'Confirm'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Clone Forms Dialog */}
+      <Dialog open={cloneDialogOpen} onClose={() => setCloneDialogOpen(false)}>
+        <DialogTitle>Clone Forms</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to clone {selectedForms.length} selected form(s)?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCloneDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => cloneFormsMutation.mutate()}
+            variant="contained"
+            color="primary"
+            disabled={cloneFormsMutation.isPending}
+          >
+            {cloneFormsMutation.isPending ? 'Cloning...' : 'Confirm'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -345,8 +463,8 @@ function ReleasedForms() {
         }}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
         >
           {snackbar.message}

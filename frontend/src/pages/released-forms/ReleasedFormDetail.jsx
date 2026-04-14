@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useMemo, useRef, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useRef, useEffect, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFormSectionNavigation } from '@/hooks/useFormSectionNavigation'
 import FormSideNavigation from '@/components/forms/FormSideNavigation'
@@ -14,17 +14,27 @@ import {
   Divider,
   CircularProgress,
   Alert,
-  Paper
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar
 } from '@mui/material'
 
 import {
-  ArrowBack as BackIcon
+  ArrowBack as BackIcon,
+  ArchiveOutlined as ArchiveIcon
 } from '@mui/icons-material'
 
 function ReleasedFormDetail() {
-const { id } = useParams()
+  const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
+  
+  const [obsoleteDialogOpen, setObsoleteDialogOpen] = useState(false)
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
 
   // Custom refs for Discrepancy and Base containers
   const discrepancyRef = useRef(null)
@@ -76,6 +86,41 @@ const { id } = useParams()
   })
 
   const hasSections = sections.length > 0
+
+  // Check if user can obsolete (admin or manager)
+  const canObsolete = user?.roles?.includes('admin') || user?.roles?.includes('manager')
+
+  // Obsolete mutation
+  const obsoleteMutation = useMutation({
+    mutationFn: async () => {
+      return await formService.archiveReleasedForm(id)
+    },
+    onSuccess: () => {
+      setObsoleteDialogOpen(false)
+      setSnackbar({ 
+        open: true, 
+        message: 'Form has been obsoleted successfully', 
+        severity: 'success' 
+      })
+      // Refresh the current page to show updated status
+      queryClient.invalidateQueries({ queryKey: ['released-form', id] })
+    },
+    onError: (error) => {
+      setSnackbar({ 
+        open: true, 
+        message: 'Failed to obsolete form: ' + (error.response?.data?.message || error.message), 
+        severity: 'error' 
+      })
+    }
+  })
+
+  const handleObsolete = () => {
+    setObsoleteDialogOpen(true)
+  }
+
+  const handleConfirmObsolete = () => {
+    obsoleteMutation.mutate()
+  }
 
   // Register Discrepancy and Base containers with Intersection Observer
   useEffect(() => {
@@ -162,7 +207,7 @@ const { id } = useParams()
           }}>
             <Button 
               startIcon={<BackIcon />} 
-              onClick={() => navigate('/released-forms')}
+              onClick={() => navigate(-1)}
               variant="outlined"
             >
               Back
@@ -170,6 +215,20 @@ const { id } = useParams()
             <Typography variant="h6" fontWeight={600} sx={{ flexGrow: 1 }}>
               Released Form Detail
             </Typography>
+            {form.status === 1 && canObsolete && (
+              <Button
+                variant="contained"
+                color="warning"
+                startIcon={<ArchiveIcon />}
+                onClick={handleObsolete}
+                sx={{ 
+                  bgcolor: '#FF9800', 
+                  '&:hover': { bgcolor: '#FB8C00' } 
+                }}
+              >
+                Obsolete
+              </Button>
+            )}
           </Box>
 
           {/* Paper with Form Information */}
@@ -188,6 +247,12 @@ const { id } = useParams()
                 Type:{' '}
                 <Box component="span" color="text.primary">
                   {form.formType}
+                </Box>
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Status:{' '}
+                <Box component="span" color="text.primary">
+                  {form.status === 1 ? 'released' : 'archived'}
                 </Box>
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -256,6 +321,54 @@ const { id } = useParams()
           />
         )}
       </Box>
+
+      {/* Obsolete Confirmation Dialog */}
+      <Dialog open={obsoleteDialogOpen} onClose={() => setObsoleteDialogOpen(false)}>
+        <DialogTitle>Obsolete Released Form</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to obsolete this released form? This will move it to the archived tab and it will no longer be available for creating new travelers.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setObsoleteDialogOpen(false)}
+            disabled={obsoleteMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmObsolete} 
+            variant="contained"
+            color="warning"
+            disabled={obsoleteMutation.isPending}
+            sx={{ bgcolor: '#FF9800', '&:hover': { bgcolor: '#FB8C00' } }}
+          >
+            {obsoleteMutation.isPending ? 'Obsoleting...' : 'Confirm'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center'
+        }}
+        sx={{
+          top: '80px'
+        }}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

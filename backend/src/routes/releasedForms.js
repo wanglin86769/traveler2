@@ -5,6 +5,8 @@ const releasedFormsController = require('../controllers/releasedForms');
 
 router.get('/', authenticate, releasedFormsController.getAllReleasedForms);
 
+router.get('/archived', authenticate, releasedFormsController.getArchivedReleasedForms);
+
 router.get('/:id', authenticate, releasedFormsController.getReleasedFormById);
 
 router.put('/:id/archive', authenticate, releasedFormsController.archiveReleasedForm);
