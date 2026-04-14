@@ -13,27 +13,34 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination,
   Chip,
   TextField,
   InputAdornment,
   LinearProgress,
-  IconButton,
-  Menu,
-  MenuItem,
   CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Checkbox
+  Checkbox,
+  MenuItem,
+  Tab,
+  Tabs,
+  IconButton
 } from '@mui/material'
 import {
   Search as SearchIcon,
   Add as AddIcon,
   MoreVert as MoreIcon,
   Archive as ArchiveIcon,
-  Folder as FolderIcon
+  Folder as FolderIcon,
+  Refresh as RefreshIcon,
+  ContentCopy as ContentCopyIcon,
+  Description as DescriptionIcon,
+  Public as PublicIcon,
+  Visibility as VisibilityIcon,
+  Edit as EditIcon,
+  Person as PersonIcon
 } from '@mui/icons-material'
 import { getTravelers, archiveTraveler } from '@/services/travelerService'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -47,16 +54,34 @@ function Travelers() {
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [anchorEl, setAnchorEl] = useState(null)
-  const [selectedTraveler, setSelectedTraveler] = useState(null)
   const [selectedTravelers, setSelectedTravelers] = useState(new Set())
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
   const [addToBinderDialogOpen, setAddToBinderDialogOpen] = useState(false)
+  const [currentTab, setCurrentTab] = useState(0)
+  const [isReloading, setIsReloading] = useState(false)
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false)
 
-  // Use React Query to get travelers list
+  // Use React Query to get travelers list based on current tab
   const { data, isLoading, error } = useQuery({
-    queryKey: ['travelers', { page: page + 1, limit: rowsPerPage, search, status: statusFilter }],
-    queryFn: () => getTravelers({ page: page + 1, limit: rowsPerPage, search, status: statusFilter }),
+    queryKey: ['travelers', currentTab, { page: page + 1, limit: rowsPerPage, search, status: statusFilter }],
+    queryFn: () => {
+      const params = { page: page + 1, limit: rowsPerPage, search, status: statusFilter }
+      
+      switch (currentTab) {
+        case 0: // My travelers
+          return getTravelers(params)
+        case 1: // Transferred travelers
+          return getTravelers({ ...params, type: 'transferred' })
+        case 2: // Shared travelers
+          return getTravelers({ ...params, type: 'shared' })
+        case 3: // Group shared travelers
+          return getTravelers({ ...params, type: 'groupShared' })
+        case 4: // Archived travelers
+          return getTravelers({ ...params, type: 'archived' })
+        default:
+          return getTravelers(params)
+      }
+    },
   })
 
   // Archive mutation
@@ -65,7 +90,7 @@ function Travelers() {
       return Promise.all(travelerIds.map(id => archiveTraveler(id)))
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['travelers'] })
+      queryClient.invalidateQueries({ queryKey: ['travelers', currentTab] })
       setSelectedTravelers(new Set())
       setArchiveDialogOpen(false)
     },
@@ -84,16 +109,6 @@ function Travelers() {
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10))
     setPage(0)
-  }
-
-  const handleMenuOpen = (event, traveler) => {
-    setAnchorEl(event.currentTarget)
-    setSelectedTraveler(traveler)
-  }
-
-  const handleMenuClose = () => {
-    setAnchorEl(null)
-    setSelectedTraveler(null)
   }
 
   const handleSelectTraveler = (travelerId) => {
@@ -126,6 +141,11 @@ function Travelers() {
     archiveMutation.mutate(Array.from(selectedTravelers))
   }
 
+  const handleTransferOwnership = () => {
+    if (selectedTravelers.size === 0) return
+    setTransferDialogOpen(true)
+  }
+
   const isAllSelected = items.length > 0 && selectedTravelers.size === items.length
   const isSomeSelected = selectedTravelers.size > 0 && selectedTravelers.size < items.length
 
@@ -153,6 +173,106 @@ function Travelers() {
     }
   }
 
+  const getTabTitle = (tabIndex) => {
+    switch (tabIndex) {
+      case 0: return 'My travelers'
+      case 1: return 'Transferred travelers'
+      case 2: return 'Shared travelers'
+      case 3: return 'Group shared travelers'
+      case 4: return 'Archived travelers'
+      default: return 'Travelers'
+    }
+  }
+
+  const getRelativeTime = (date) => {
+    if (!date) return '-'
+    const now = new Date()
+    const past = new Date(date)
+    const diffInSeconds = Math.floor((now - past) / 1000)
+    
+    if (diffInSeconds < 60) return 'just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} days ago`
+    if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} months ago`
+    return `${Math.floor(diffInSeconds / 31536000)} years ago`
+  }
+
+  const renderProgress = (traveler) => {
+    const { status, totalInput, finishedInput } = traveler
+    
+    // Completed status (status === 2)
+    if (status === 2) {
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ width: 100, height: 20, bgcolor: '#4CAF50', borderRadius: 1 }} />
+          <Typography variant="body2" sx={{ minWidth: 60 }}>✅ full</Typography>
+        </Box>
+      )
+    }
+    
+    // No totalInput field
+    if (totalInput === undefined || totalInput === null) {
+      return <Typography variant="body2">unknown</Typography>
+    }
+    
+    // totalInput is 0
+    if (totalInput === 0) {
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ 
+            width: 100, 
+            height: 20, 
+            bgcolor: '#FFEB3B', 
+            borderRadius: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Typography variant="body2" sx={{ color: '#000', fontSize: 12 }}>0 / {totalInput || 0}</Typography>
+          </Box>
+        </Box>
+      )
+    }
+    
+    const finished = finishedInput || 0
+    const inProgressPercentage = Math.floor((finished / totalInput) * 100)
+    
+    if (inProgressPercentage === 100) {
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ width: 100, height: 20, bgcolor: '#4CAF50', borderRadius: 1 }} />
+          <Typography variant="body2" sx={{ minWidth: 60 }}>{finished} / {totalInput}</Typography>
+        </Box>
+      )
+    }
+    
+    // Normal status: dual-color progress bar (blue for completed + yellow for in-progress)
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ 
+          width: 100, 
+          height: 20, 
+          bgcolor: '#FFEB3B', 
+          borderRadius: 1,
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <Box sx={{ 
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: `${inProgressPercentage}%`,
+            bgcolor: '#2196F3',
+            zIndex: 1
+          }} />
+        </Box>
+        <Typography variant="body2" sx={{ minWidth: 60 }}>{finished} / {totalInput}</Typography>
+      </Box>
+    )
+  }
+
   if (error) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
@@ -163,138 +283,247 @@ function Travelers() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h4" fontWeight={600}>
           Travelers
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/released-forms')}
-        >
-          Create Traveler
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/released-forms')}
+            sx={{ bgcolor: '#1890ff', '&:hover': { bgcolor: '#096dd9' } }}
+          >
+            Create Traveler
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<ContentCopyIcon />}
+            onClick={() => setAddToBinderDialogOpen(true)}
+            disabled={selectedTravelers.size === 0}
+            sx={{ bgcolor: '#1890ff', '&:hover': { bgcolor: '#096dd9' } }}
+          >
+            Clone
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<FolderIcon />}
+            onClick={() => setAddToBinderDialogOpen(true)}
+            disabled={selectedTravelers.size === 0}
+            sx={{ bgcolor: '#f39c12', color: '#212121', '&:hover': { bgcolor: '#e67e22' } }}
+          >
+            Add to Binder
+          </Button>
+        </Box>
       </Box>
 
       <Card>
         <CardContent>
-          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-            <TextField
-              placeholder="Search travelers..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                )
-              }}
-              sx={{ flexGrow: 1 }}
-            />
-            <TextField
-              select
-              label="Status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              sx={{ width: 150 }}
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="0">Initialized</MenuItem>
-              <MenuItem value="1">Active</MenuItem>
-              <MenuItem value="1.5">Submitted</MenuItem>
-              <MenuItem value="2">Completed</MenuItem>
-            </TextField>
+          <Tabs value={currentTab} onChange={(e, newValue) => {
+                setCurrentTab(newValue)
+                setPage(0)
+                setSelectedTravelers(new Set())
+              }}>
+            <Tab label="My travelers" sx={{ textTransform: 'none' }} />
+            <Tab label="Transferred travelers" sx={{ textTransform: 'none' }} />
+            <Tab label="Shared travelers" sx={{ textTransform: 'none' }} />
+            <Tab label="Group shared travelers" sx={{ textTransform: 'none' }} />
+            <Tab label="Archived travelers" sx={{ textTransform: 'none' }} />
+          </Tabs>
+
+          {/* Reload table button */}
+          <Box sx={{ mt: 3, mb: 2, display: 'flex', gap: 1 }}>
             <Button
               variant="contained"
-              color="warning"
+              size="small"
+              startIcon={isReloading ? <CircularProgress size={16} sx={{ color: 'white' }} /> : <RefreshIcon />}
+              sx={{ bgcolor: '#4CAF50', color: 'white', '&:hover': { bgcolor: '#43A047' } }}
+              onClick={async () => {
+                setIsReloading(true)
+                await queryClient.invalidateQueries({ queryKey: ['travelers', currentTab] })
+                setTimeout(() => setIsReloading(false), 500)
+              }}
+              disabled={isReloading}
+            >
+              {isReloading ? 'Reloading...' : 'Reload table'}
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
               startIcon={<ArchiveIcon />}
               onClick={handleArchive}
               disabled={selectedTravelers.size === 0}
+              sx={{ bgcolor: '#FF9800', color: '#212121', '&:hover': { bgcolor: '#FB8C00' } }}
             >
-              Archive ({selectedTravelers.size})
+              Archive
             </Button>
             <Button
               variant="contained"
-              startIcon={<FolderIcon />}
-              onClick={() => setAddToBinderDialogOpen(true)}
+              size="small"
+              startIcon={<PersonIcon />}
+              onClick={handleTransferOwnership}
               disabled={selectedTravelers.size === 0}
+              sx={{ bgcolor: '#FF9800', color: '#212121', '&:hover': { bgcolor: '#FB8C00' } }}
             >
-              Add to Binder ({selectedTravelers.size})
+              Transfer ownership
             </Button>
           </Box>
 
+          {/* Action bar: left side pagination config, right side search box */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                select
+                size="small"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10))
+                  setPage(0)
+                }}
+                sx={{ width: 80, height: '32px' }}
+                InputProps={{ sx: { height: '32px' } }}
+              >
+                <MenuItem value={2}>2</MenuItem>
+                <MenuItem value={5}>5</MenuItem>
+                <MenuItem value={10}>10</MenuItem>
+                <MenuItem value={25}>25</MenuItem>
+                <MenuItem value={50}>50</MenuItem>
+              </TextField>
+              <Typography variant="body2">Rows per page</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2">Search:</Typography>
+              <TextField
+                size="small"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                sx={{ width: 200, height: '32px' }}
+                InputProps={{ sx: { height: '32px' } }}
+              />
+            </Box>
+          </Box>
+
           <TableContainer>
-            <Table>
+            <Table sx={{ border: '1px solid #E0E0E0' }} size="small">
               <TableHead>
-                <TableRow>
-                  <TableCell padding="checkbox">
+                <TableRow sx={{ backgroundColor: '#FAFAFA' }}>
+                  <TableCell sx={{ width: 60, border: '1px solid #E0E0E0', textAlign: 'center' }}>
                     <Checkbox
                       indeterminate={isSomeSelected}
                       checked={isAllSelected}
                       onChange={handleSelectAll}
+                      size="small"
                     />
                   </TableCell>
-                  <TableCell>Title</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Progress</TableCell>
-                  <TableCell>Created By</TableCell>
-                  <TableCell>Deadline</TableCell>
-                  <TableCell align="right">Actions</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Title</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Status</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Tags</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Shared with</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Shared groups</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Created</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Deadline</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Filled by</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Updated</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700 }}>Estimated progress</TableCell>
+                  <TableCell sx={{ border: '1px solid #E0E0E0', fontWeight: 700, textAlign: 'left' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={12} align="center" sx={{ border: '1px solid #E0E0E0' }}>
                       <CircularProgress size={24} />
                     </TableCell>
                   </TableRow>
                 ) : items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">No travelers found</TableCell>
+                    <TableCell colSpan={12} align="center" sx={{ border: '1px solid #E0E0E0' }}>
+                      No travelers found
+                    </TableCell>
                   </TableRow>
                 ) : (
                   items.map((traveler) => (
-                    <TableRow key={traveler._id} hover>
-                      <TableCell padding="checkbox">
+                    <TableRow key={traveler._id} hover sx={{ backgroundColor: selectedTravelers.has(traveler._id) ? '#E3F2FD' : 'inherit' }}>
+                      <TableCell padding="checkbox" sx={{ border: '1px solid #E0E0E0', textAlign: 'center' }}>
                         <Checkbox
                           checked={selectedTravelers.has(traveler._id)}
                           onChange={() => handleSelectTraveler(traveler._id)}
+                          size="small"
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                         <Typography fontWeight={500}>{traveler.title}</Typography>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                         <Chip
                           label={getStatusLabel(traveler.status)}
                           size="small"
                           color={getStatusColor(traveler.status)}
                         />
                       </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <LinearProgress
-                            variant="determinate"
-                            value={traveler.progress || 0}
-                            sx={{ width: 100 }}
-                          />
-                          <Typography variant="body2">
-                            {traveler.progress || 0}%
-                          </Typography>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">
+                          {traveler.tags && traveler.tags.length > 0 ? traveler.tags.join(', ') : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">
+                          {traveler.sharedWith && traveler.sharedWith.length > 0 
+                            ? traveler.sharedWith.map(u => u.name || u).join(', ') 
+                            : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">
+                          {traveler.sharedGroup && traveler.sharedGroup.length > 0 
+                            ? traveler.sharedGroup.map(g => g.name || g).join(', ') 
+                            : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">
+                          {getRelativeTime(traveler.createdOn)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">
+                          {traveler.deadline
+                            ? new Date(traveler.deadline).toLocaleDateString()
+                            : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">
+                          {traveler.updatedBy?.name ? traveler.updatedBy.name.charAt(0).toUpperCase() : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        <Typography variant="body2">
+                          {getRelativeTime(traveler.updatedOn)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ border: '1px solid #E0E0E0' }}>
+                        {renderProgress(traveler)}
+                      </TableCell>
+                      <TableCell align="left" sx={{ border: '1px solid #E0E0E0' }}>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <IconButton 
+                            size="medium"
+                            onClick={() => navigate(`/travelers/${traveler._id}`)}
+                            sx={{ color: '#3B82F6', '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' } }}
+                            aria-label="View details"
+                          >
+                            <VisibilityIcon />
+                          </IconButton>
+                          <IconButton 
+                            size="medium"
+                            onClick={() => navigate(`/travelers/${traveler._id}/input`)}
+                            sx={{ color: '#F97316', '&:hover': { backgroundColor: 'rgba(249, 115, 22, 0.08)' } }}
+                            aria-label="Enter data"
+                          >
+                            <EditIcon />
+                          </IconButton>
                         </Box>
-                      </TableCell>
-                      <TableCell>{traveler.createdBy?.name || traveler.createdBy}</TableCell>
-                      <TableCell>
-                        {traveler.deadline
-                          ? new Date(traveler.deadline).toLocaleDateString()
-                          : '-'}
-                      </TableCell>
-                      <TableCell align="right">
-                        <IconButton onClick={(e) => handleMenuOpen(e, traveler)}>
-                          <MoreIcon />
-                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))
@@ -303,30 +532,49 @@ function Travelers() {
             </Table>
           </TableContainer>
 
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={pagination.total || 0}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
+          {/* Bottom status bar */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Showing {pagination.total > 0 ? page * rowsPerPage + 1 : 0} to {Math.min((page + 1) * rowsPerPage, pagination.total)} of {pagination.total} entries
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.1 }}>
+              <Button
+                size="small"
+                onClick={() => handleChangePage(null, 0)}
+                disabled={page === 0}
+                sx={{ '&:hover:not(:disabled)': { backgroundColor: 'rgba(0, 0, 0, 0.08)' } }}
+              >
+                First
+              </Button>
+              <Button
+                size="small"
+                onClick={() => handleChangePage(null, page - 1)}
+                disabled={page === 0}
+                sx={{ '&:hover:not(:disabled)': { backgroundColor: 'rgba(0, 0, 0, 0.08)' } }}
+              >
+                Previous
+              </Button>
+              <Typography variant="body2" sx={{ minWidth: '40px', textAlign: 'center' }}>{page + 1}</Typography>
+              <Button
+                size="small"
+                onClick={() => handleChangePage(null, page + 1)}
+                disabled={(page + 1) * rowsPerPage >= pagination.total}
+                sx={{ '&:hover:not(:disabled)': { backgroundColor: 'rgba(0, 0, 0, 0.08)' } }}
+              >
+                Next
+              </Button>
+              <Button
+                size="small"
+                onClick={() => handleChangePage(null, Math.ceil(pagination.total / rowsPerPage) - 1)}
+                disabled={(page + 1) * rowsPerPage >= pagination.total}
+                sx={{ '&:hover:not(:disabled)': { backgroundColor: 'rgba(0, 0, 0, 0.08)' } }}
+              >
+                Last
+              </Button>
+            </Box>
+          </Box>
         </CardContent>
       </Card>
-
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        <MenuItem onClick={() => { navigate(`/travelers/${selectedTraveler?._id}`); handleMenuClose() }}>
-          View Details
-        </MenuItem>
-        <MenuItem onClick={() => { navigate(`/travelers/${selectedTraveler?._id}/input`); handleMenuClose() }}>
-          Enter Data
-        </MenuItem>
-      </Menu>
 
       <Dialog open={archiveDialogOpen} onClose={() => setArchiveDialogOpen(false)}>
         <DialogTitle>Archive Travelers</DialogTitle>
@@ -345,6 +593,36 @@ function Travelers() {
             disabled={archiveMutation.isPending}
           >
             {archiveMutation.isPending ? 'Archiving...' : 'Confirm'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={transferDialogOpen} onClose={() => setTransferDialogOpen(false)}>
+        <DialogTitle>Transfer Ownership</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Select a user to transfer ownership of {selectedTravelers.size} traveler(s) to.
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="User ID"
+            fullWidth
+            variant="outlined"
+            sx={{ mt: 2 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTransferDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            color="warning"
+            onClick={() => {
+              setTransferDialogOpen(false)
+              // TODO: Implement transfer ownership logic
+            }}
+          >
+            Transfer
           </Button>
         </DialogActions>
       </Dialog>

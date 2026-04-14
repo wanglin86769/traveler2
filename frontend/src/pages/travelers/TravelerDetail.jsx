@@ -38,6 +38,7 @@ function TravelerDetail() {
     const {
       sections,
       activeSection,
+      handleSectionRegister,
       handleScrollToSection,
       discrepancyRef,
       travelerRef,
@@ -130,12 +131,30 @@ function TravelerDetail() {
   }
   
 // Render error state
-  if (!currentTraveler || !currentTraveler.form) {
+  if (!currentTraveler) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="info">
           Traveler not found
         </Alert>
+      </Box>
+    )
+  }
+
+  // Check if traveler has form data
+  if (!currentTraveler.form) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="warning">
+          Traveler data is incomplete. This traveler may have been created before the form structure was added. Please recreate this traveler from a released form.
+        </Alert>
+        <Button 
+          sx={{ mt: 2 }}
+          onClick={() => navigate('/released-forms')}
+          variant="contained"
+        >
+          Go to Released Forms
+        </Button>
       </Box>
     )
   }
