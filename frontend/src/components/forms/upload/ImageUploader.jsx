@@ -43,8 +43,8 @@ function ImageUploader({ imageInfo, onImageUploaded }) {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
-      if (response.data) {
-        const { url, filename, originalname, size } = response.data
+      if (response) {
+        const { url, filename, originalname, size } = response
         onImageUploaded({ src: url, filename: originalname || filename, originalname, size })
       }
     } catch (err) {

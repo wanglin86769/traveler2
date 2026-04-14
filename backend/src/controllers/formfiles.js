@@ -37,10 +37,10 @@ const imageUpload = multer({
 // Download form file
 const getFormFile = async (req, res, next) => {
   try {
-    const { formId, fileId } = req.params;
+    const { id } = req.params;
     const uploadDir = config.upload.dir;
     
-    const formFile = await FormFile.findById(fileId);
+    const formFile = await FormFile.findById(id);
     
     if (!formFile) {
       throw new ApiError(404, 'Form file not found');
