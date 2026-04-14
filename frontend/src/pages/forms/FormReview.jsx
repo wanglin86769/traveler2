@@ -29,10 +29,11 @@ import {
 import { getForm, getReviewInfo, submitReviewResult } from '@/services/formService'
 import { useAuth } from '@/contexts/AuthContext'
 import FormRenderer from '@/components/forms/FormRenderer'
+import { getFormStatusLabel, getFormStatusColor } from '@/utils/status'
 
 const reviewResultMap = {
   '1': { label: 'Approved', icon: <CheckIcon />, color: 'success' },
-  '2': { label: 'Requested for change', icon: <ErrorIcon />, color: 'error' }
+  '2': { label: 'Requested for change', icon: <ErrorIcon />, sx: { backgroundColor: '#FF8A80', color: 'white' } }
 }
 
 function FormReview() {
@@ -107,7 +108,7 @@ function FormReview() {
     )
   }
 
-  if (!form || !form.data) {
+  if (!form) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
         <Typography>Form not found</Typography>
@@ -115,15 +116,24 @@ function FormReview() {
     )
   }
 
-  const formData = form.data
-  const review = reviewInfo?.data || {}
+  const formData = form
+  const review = reviewInfo || {}
   const reviewRequests = review.reviewRequests || []
   const reviewResults = review.reviewResults || []
+  const currentUserId = user._id?.toString() || user._id
 
-  // Check if current user is a reviewer
-  const isReviewer = reviewRequests.some(req => req._id === user._id)
+  // Check if current user is a reviewer (either in requests or has submitted a review result)
+  const isReviewer = reviewRequests.some(req => req._id?.toString() === currentUserId) ||
+    reviewResults.some(r => {
+      // Check both reviewerId and reviewer._id
+      const reviewerId = r.reviewerId?.toString() || r.reviewer?._id?.toString()
+      return reviewerId === currentUserId
+    })
   const myLatestResult = reviewResults
-    .filter(r => r.reviewerId === user._id)
+    .filter(r => {
+      const reviewerId = r.reviewerId?.toString() || r.reviewer?._id?.toString()
+      return reviewerId === currentUserId
+    })
     .sort((a, b) => new Date(b.submittedOn) - new Date(a.submittedOn))[0]
 
   if (!isReviewer) {
@@ -136,7 +146,9 @@ function FormReview() {
     )
   }
 
-  if (formData.status !== 0.5) {
+  // Allow viewing review history even if form is not under review status
+  // This enables reviewers to see their past review results
+  if (formData.status !== 0.5 && !myLatestResult) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="warning">
@@ -164,71 +176,89 @@ function FormReview() {
       </Box>
 
       {/* Form Info */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+      <Paper sx={{ p: 2, mb: 2, border: '1px solid #E8E8E8' }}>
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, fontSize: '20px' }}>
           {formData.title}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {formData.description || 'No description'}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Version: <strong>{formData._v}</strong>
-          {' • '}
-          Type: <strong>{formData.formType}</strong>
-          {' • '}
-          Status: <strong>Under Review</strong>
-        </Typography>
+        {formData.description && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            {formData.description}
+          </Typography>
+        )}
+        <Box sx={{ display: 'flex', gap: 3, mt: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Version: <strong>{formData._v}</strong>
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Type: <strong>{formData.formType}</strong>
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Status: <strong>{getFormStatusLabel(formData.status)}</strong>
+          </Typography>
+        </Box>
       </Paper>
 
       {/* Review History */}
       {reviewResults.length > 0 && (
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
-            Review History
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {reviewResults
-              .sort((a, b) => new Date(b.submittedOn) - new Date(a.submittedOn))
-              .map((result, index) => (
-                <Box 
-                  key={index}
-                  sx={{ 
-                    p: 2, 
-                    borderLeft: 3, 
-                    borderColor: result.result === '1' ? 'success.main' : 'error.main',
-                    bgcolor: result.result === '1' ? 'success.light' : 'error.light'
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                    <Chip
-                      icon={reviewResultMap[result.result]?.icon}
-                      label={reviewResultMap[result.result]?.label}
-                      color={reviewResultMap[result.result]?.color}
-                      size="small"
-                    />
-                    <Typography variant="body2" color="text.secondary">
-                      {result.reviewer?.name || result.reviewerId}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      •
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      <TimeIcon fontSize="small" sx={{ mr: 0.5, fontSize: 14 }} />
-                      {result.submittedOn ? new Date(result.submittedOn).toLocaleString() : 'N/A'}
-                    </Typography>
-                  </Box>
-                  {result.comment && (
-                    <Typography variant="body2" sx={{ ml: 4 }}>
-                      <em>"{result.comment}"</em>
-                    </Typography>
-                  )}
+              <Paper sx={{ p: 2, mb: 2, border: '1px solid #E8E8E8' }}>
+                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                  Review History
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {reviewResults
+                    .sort((a, b) => new Date((b.submittedOn || b._doc?.submittedOn)) - new Date((a.submittedOn || a._doc?.submittedOn)))
+                    .map((result, index) => {
+                      // Access both direct properties and _doc for mongoose documents
+                      const reviewerId = result.reviewerId || result._doc?.reviewerId
+                      const resultValue = result.result || result._doc?.result
+                      const submittedOn = result.submittedOn || result._doc?.submittedOn
+                      const comment = result.comment || result._doc?.comment
+                      const v = result.v || result._doc?.v
+                      const reviewer = result.reviewer || result._doc?.reviewer
+                      
+                      console.log('Rendering review result:', { reviewerId, resultValue, submittedOn, comment, v, reviewer })
+                      
+                      return (
+                        <Box 
+                          key={index}
+                          sx={{ 
+                            p: 2, 
+                            borderLeft: 3, 
+                            borderColor: resultValue === '1' ? 'success.main' : 'error.main',
+                            bgcolor: resultValue === '1' ? '#E8F5E9' : '#FFEBEE'
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                            <Chip
+                              icon={reviewResultMap[resultValue]?.icon}
+                              label={reviewResultMap[resultValue]?.label}
+                              {...(reviewResultMap[resultValue]?.sx
+                                ? { sx: reviewResultMap[resultValue].sx }
+                                : { color: reviewResultMap[resultValue]?.color })}
+                              size="small"
+                            />
+                            <Typography variant="body2" color="text.secondary">
+                              {reviewer?.name || reviewerId}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              •
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              <TimeIcon fontSize="small" sx={{ mr: 0.5, fontSize: 14 }} />
+                              {submittedOn ? new Date(submittedOn).toLocaleString() : 'N/A'}
+                            </Typography>
+                          </Box>
+                          {comment && (
+                            <Typography variant="body2" sx={{ ml: 4 }}>
+                              <em>"{comment}"</em>
+                            </Typography>
+                          )}
+                        </Box>
+                      )
+                    })}
                 </Box>
-              ))}
-          </Box>
-        </Paper>
-      )}
-
-      {/* Current Review Status */}
+              </Paper>
+            )}      {/* Current Review Status */}
       {myLatestResult ? (
         <Alert 
           severity={myLatestResult.result === '1' ? 'success' : 'warning'}
@@ -251,7 +281,7 @@ function FormReview() {
       )}
 
       {/* Form Preview */}
-      <Paper sx={{ p: 3, mb: 2 }}>
+      <Paper sx={{ p: 3, mb: 2, border: '1px solid #E8E8E8' }}>
         <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
           Form Content
         </Typography>
@@ -265,7 +295,7 @@ function FormReview() {
       </Paper>
 
       {/* Review Form */}
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, border: '1px solid #E8E8E8' }}>
         <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
           Submit Review Result
         </Typography>
@@ -273,7 +303,7 @@ function FormReview() {
           Please review this form and submit your result. If you request for change, please provide a comment explaining what needs to be modified.
         </Typography>
 
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 3, opacity: formData.status !== 0.5 ? 0.5 : 1, pointerEvents: formData.status !== 0.5 ? 'none' : 'auto' }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
             Review Result
           </Typography>
@@ -285,16 +315,18 @@ function FormReview() {
               value="1" 
               control={<Radio />} 
               label="Approve"
+              disabled={formData.status !== 0.5}
             />
             <FormControlLabel 
               value="2" 
               control={<Radio />} 
               label="Request for change"
+              disabled={formData.status !== 0.5}
             />
           </RadioGroup>
         </Box>
 
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 3, opacity: formData.status !== 0.5 ? 0.5 : 1, pointerEvents: formData.status !== 0.5 ? 'none' : 'auto' }}>
           <TextField
             label="Comment"
             placeholder="Please provide your review comments..."
@@ -304,6 +336,7 @@ function FormReview() {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             helperText={result === '2' ? "Required when requesting for change" : "Optional"}
+            disabled={formData.status !== 0.5}
           />
         </Box>
 
@@ -311,13 +344,14 @@ function FormReview() {
           <Button
             variant="outlined"
             onClick={() => navigate(-1)}
+            disabled={formData.status !== 0.5}
           >
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={handleSubmitReview}
-            disabled={!result || submitMutation.isPending}
+            disabled={!result || submitMutation.isPending || formData.status !== 0.5}
           >
             {submitMutation.isPending ? 'Submitting...' : 'Submit Review'}
           </Button>
@@ -335,7 +369,9 @@ function FormReview() {
             <Chip
               icon={reviewResultMap[result]?.icon}
               label={reviewResultMap[result]?.label}
-              color={reviewResultMap[result]?.color}
+              {...(reviewResultMap[result]?.sx
+                ? { sx: reviewResultMap[result].sx }
+                : { color: reviewResultMap[result]?.color })}
             />
           </Box>
           {comment && (

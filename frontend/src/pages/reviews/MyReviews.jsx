@@ -35,7 +35,7 @@ import { getForms, getMyReviews } from '@/services/formService'
 const reviewStatusMap = {
   pending: { label: 'Pending', color: 'warning' },
   approved: { label: 'Approved', color: 'success' },
-  rework: { label: 'Requested for change', color: 'error' }
+  rework: { label: 'Requested for change', sx: { backgroundColor: '#FF8A80', color: 'white' } }
 }
 
 function MyReviews() {
@@ -188,32 +188,44 @@ function MyReviews() {
                       <TableBody>
                         {items
                           .filter(form => {
-                            const latestResult = form.__review?.reviewResults
-                              ?.filter(r => r.reviewerId === user._id)
-                              ?.sort((a, b) => new Date(b.submittedOn) - new Date(a.submittedOn))[0]
-                            return !latestResult || latestResult.result === undefined
+                            // Check if the form should be in pending reviews
+                            const latestResult = form.myLatestResult
+                            const reviewRequest = form.myReviewRequest
+
+                            // No result submitted yet -> pending
+                            if (!latestResult || latestResult.result === undefined) {
+                              return true
+                            }
+
+                            // Result was submitted, but a new review request was made after -> pending
+                            if (reviewRequest && latestResult.submittedOn && reviewRequest.requestedOn) {
+                              return new Date(reviewRequest.requestedOn) > new Date(latestResult.submittedOn)
+                            }
+
+                            return false
                           })
                           .map((form) => {
-                          const reviewRequest = form.__review?.reviewRequests?.find(req => req._id === user._id)
-                          const latestResult = form.__review?.reviewResults
-                            ?.filter(r => r.reviewerId === user._id)
-                            ?.sort((a, b) => new Date(b.submittedOn) - new Date(a.submittedOn))[0]
-                          
+                          const reviewRequest = form.myReviewRequest
+                          const latestResult = form.myLatestResult
+
                           return (
                             <TableRow key={form._id} hover>
                               <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                                 <Typography fontWeight={500}>{form.title}</Typography>
                               </TableCell>
                               <TableCell sx={{ border: '1px solid #E0E0E0' }}>
-                                <Chip 
-                                  label={latestResult 
-                                    ? reviewStatusMap[latestResult.result === '1' ? 'approved' : 'rework'].label 
+                                <Chip
+                                  label={latestResult
+                                    ? reviewStatusMap[latestResult.result === '1' ? 'approved' : 'rework'].label
                                     : reviewStatusMap.pending.label
                                   }
-                                  color={latestResult 
-                                    ? reviewStatusMap[latestResult.result === '1' ? 'approved' : 'rework'].color 
-                                    : reviewStatusMap.pending.color
-                                  }
+                                  {...(latestResult
+                                    ? (reviewStatusMap[latestResult.result === '1' ? 'approved' : 'rework'].sx
+                                      ? { sx: reviewStatusMap[latestResult.result === '1' ? 'approved' : 'rework'].sx }
+                                      : { color: reviewStatusMap[latestResult.result === '1' ? 'approved' : 'rework'].color })
+                                    : (reviewStatusMap.pending.sx
+                                      ? { sx: reviewStatusMap.pending.sx }
+                                      : { color: reviewStatusMap.pending.color }))}
                                   size="small"
                                 />
                               </TableCell>
@@ -275,26 +287,23 @@ function MyReviews() {
                       <TableBody>
                         {items
                           .filter(form => {
-                            const latestResult = form.__review?.reviewResults
-                              ?.filter(r => r.reviewerId === user._id)
-                              ?.sort((a, b) => new Date(b.submittedOn) - new Date(a.submittedOn))[0]
-                            return latestResult && latestResult.result !== undefined
+                            return form.myLatestResult && form.myLatestResult.result !== undefined
                           })
                           .map((form) => {
-                            const latestResult = form.__review?.reviewResults
-                              ?.filter(r => r.reviewerId === user._id)
-                              ?.sort((a, b) => new Date(b.submittedOn) - new Date(a.submittedOn))[0]
-                            
+                            const latestResult = form.myLatestResult
+
                             return (
                               <TableRow key={form._id} hover>
                                 <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                                   <Typography fontWeight={500}>{form.title}</Typography>
                                 </TableCell>
                                 <TableCell sx={{ border: '1px solid #E0E0E0' }}>
-                                  <Chip 
+                                  <Chip
                                     icon={latestResult.result === '1' ? <ApprovedIcon /> : <ReworkIcon />}
                                     label={latestResult.result === '1' ? 'Approved' : 'Requested for change'}
-                                    color={latestResult.result === '1' ? 'success' : 'error'}
+                                    {...(latestResult.result === '1'
+                                      ? { color: 'success' }
+                                      : { sx: { backgroundColor: '#FF8A80', color: 'white' } })}
                                     size="small"
                                   />
                                 </TableCell>
