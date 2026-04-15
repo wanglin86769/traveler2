@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
+const { body } = require('express-validator');
+const { validateRequest } = require('../middleware/validation');
 const travelersController = require('../controllers/traveler');
 
 // My travelers
@@ -17,6 +19,12 @@ router.get('/group-shared', authenticate, travelersController.getGroupSharedTrav
 
 // Archived travelers
 router.get('/archived', authenticate, travelersController.getArchivedTravelers);
+
+// Batch transfer ownership
+router.put('/transfer', authenticate, [
+  body('travelerIds').isArray({ min: 1 }).withMessage('At least one traveler ID is required'),
+  body('userId').notEmpty().withMessage('User ID is required')
+], validateRequest, travelersController.transferOwnership);
 
 // Legacy routes for backward compatibility
 router.get('/', authenticate, travelersController.getAllTravelers);

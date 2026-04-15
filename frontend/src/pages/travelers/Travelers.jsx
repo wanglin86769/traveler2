@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 import { useQuery } from '@tanstack/react-query'
 import {
   Box,
@@ -26,7 +27,9 @@ import {
   MenuItem,
   Tab,
   Tabs,
-  IconButton
+  IconButton,
+  Snackbar,
+  Alert
 } from '@mui/material'
 import {
   Search as SearchIcon,
@@ -42,13 +45,15 @@ import {
   Edit as EditIcon,
   Person as PersonIcon
 } from '@mui/icons-material'
-import { getTravelers, archiveTraveler, getMyTravelers, getTransferredTravelers, getSharedTravelers, getGroupSharedTravelers, getArchivedTravelers } from '@/services/travelerService'
+import { getTravelers, archiveTraveler, getMyTravelers, getTransferredTravelers, getSharedTravelers, getGroupSharedTravelers, getArchivedTravelers, transferOwnership } from '@/services/travelerService'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import AddToBinderDialog from '@/components/common/AddToBinderDialog'
+import TravelerTransferOwnershipDialog from '@/components/travelers/TravelerTransferOwnershipDialog'
 
 function Travelers() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
@@ -60,6 +65,7 @@ function Travelers() {
   const [currentTab, setCurrentTab] = useState(0)
   const [isReloading, setIsReloading] = useState(false)
   const [transferDialogOpen, setTransferDialogOpen] = useState(false)
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
 
   // Tab definitions
   const tabs = [
@@ -89,6 +95,24 @@ function Travelers() {
     },
     onError: (error) => {
       console.error('Archive error:', error)
+    }
+  })
+
+  // Transfer ownership mutation
+  const transferOwnershipMutation = useMutation({
+    mutationFn: (userId) => {
+      return transferOwnership(Array.from(selectedTravelers), userId)
+    },
+    onSuccess: () => {
+      // Invalidate all traveler queries to ensure all tabs are updated
+      queryClient.invalidateQueries({ queryKey: ['travelers'] })
+      setSelectedTravelers(new Set())
+      setTransferDialogOpen(false)
+      setSnackbar({ open: true, message: 'Ownership transferred successfully', severity: 'success' })
+    },
+    onError: (error) => {
+      console.error('Transfer ownership error:', error)
+      setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to transfer ownership', severity: 'error' })
     }
   })
 
@@ -137,6 +161,10 @@ function Travelers() {
   const handleTransferOwnership = () => {
     if (selectedTravelers.size === 0) return
     setTransferDialogOpen(true)
+  }
+
+  const handleConfirmTransfer = (userId) => {
+    transferOwnershipMutation.mutate(userId)
   }
 
   const isAllSelected = items.length > 0 && selectedTravelers.size === items.length
@@ -609,35 +637,17 @@ function Travelers() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={transferDialogOpen} onClose={() => setTransferDialogOpen(false)}>
-        <DialogTitle>Transfer Ownership</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Select a user to transfer ownership of {selectedTravelers.size} traveler(s) to.
-          </Typography>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="User ID"
-            fullWidth
-            variant="outlined"
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setTransferDialogOpen(false)}>Cancel</Button>
-          <Button 
-            variant="contained" 
-            color="warning"
-            onClick={() => {
-              setTransferDialogOpen(false)
-              // TODO: Implement transfer ownership logic
-            }}
-          >
-            Transfer
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <TravelerTransferOwnershipDialog
+        open={transferDialogOpen}
+        onClose={() => setTransferDialogOpen(false)}
+        onConfirm={handleConfirmTransfer}
+        selectedTravelers={Array.from(selectedTravelers).map(travelerId => {
+          const traveler = items.find(item => item._id === travelerId)
+          return traveler || { _id: travelerId, title: 'Unknown' }
+        })}
+        currentUserId={user?._id}
+        isTransferring={transferOwnershipMutation.isPending}
+      />
 
       <AddToBinderDialog
         open={addToBinderDialogOpen}
@@ -646,6 +656,22 @@ function Travelers() {
         itemType="traveler"
         sourceItem={selectedTravelers.size === 1 ? items.find(item => selectedTravelers.has(item._id)) : null}
       />
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

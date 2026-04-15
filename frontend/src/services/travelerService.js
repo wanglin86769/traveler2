@@ -96,6 +96,10 @@ const travelerService = {
     return api.put(`/travelers/${id}/archive`)
   },
 
+  transferOwnership: (travelerIds, userId) => {
+    return api.put('/travelers/transfer', { travelerIds, userId })
+  },
+
   // Upload file for traveler
   uploadFile: (travelerId, formData) => {
     return api.post(`/uploads/traveler/${travelerId}`, formData, {
@@ -179,6 +183,7 @@ export const submitTravelerNote = travelerService.submitTravelerNote
 export const updateTravelerNote = travelerService.updateTravelerNote
 export const deleteTravelerNote = travelerService.deleteTravelerNote
 export const archiveTraveler = travelerService.archiveTraveler
+export const transferOwnership = travelerService.transferOwnership
 export const getDiscrepancyLogs = travelerService.getDiscrepancyLogs
 export const createDiscrepancyLog = travelerService.createDiscrepancyLog
 export const addDiscrepancyRecords = travelerService.addDiscrepancyRecords

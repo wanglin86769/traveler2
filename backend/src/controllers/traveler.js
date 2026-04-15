@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { Traveler } = require('../models/Traveler');
 const { ReleasedForm } = require('../models/ReleasedForm');
 const { Log } = require('../models/Traveler');
+const { User } = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
 
@@ -577,6 +578,48 @@ const updateTravelerStatus = async (req, res, next) => {
   }
 };
 
+const transferOwnership = async (req, res, next) => {
+  try {
+    const { travelerIds, userId } = req.body;
+    const currentUserId = req.user._id;
+
+    // Verify target user exists
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      throw new ApiError(404, 'Target user not found');
+    }
+
+    // Batch update traveler ownership
+    const result = await Traveler.updateMany(
+      {
+        _id: { $in: travelerIds },
+        $or: [
+          { owner: currentUserId }, // User is the current owner
+          { $and: [
+            { owner: { $exists: false } }, // No owner set yet
+            { createdBy: currentUserId }   // User is the creator
+          ]}
+        ]
+      },
+      {
+        owner: userId,
+        transferredOn: new Date()
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      throw new ApiError(400, 'No travelers were transferred. Make sure you are the owner of the selected travelers.');
+    }
+
+    res.json({
+      message: 'Ownership transferred successfully',
+      count: result.modifiedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMyTravelers,
   getTransferredTravelers,
@@ -589,5 +632,6 @@ module.exports = {
   updateTraveler,
   deleteTraveler,
   archiveTraveler,
-  updateTravelerStatus
+  updateTravelerStatus,
+  transferOwnership
 };
