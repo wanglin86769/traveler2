@@ -216,14 +216,6 @@ function TravelerDetail() {
               </Typography>
             </Box>
             
-            {/* Status display - read-only */}
-            <TravelerStatusControls
-              currentStatus={currentTraveler.status}
-              onStatusChange={handleStatusChange}
-              travelerId={id}
-              readOnly={true}
-            />
-            
             {/* Toggle History and Notes buttons */}
             <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
               <Button

@@ -206,7 +206,6 @@ function Travelers() {
       return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box sx={{ width: 100, height: 20, bgcolor: '#4CAF50', borderRadius: 1 }} />
-          <Typography variant="body2" sx={{ minWidth: 60 }}>✅ full</Typography>
         </Box>
       )
     }

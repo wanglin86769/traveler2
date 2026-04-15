@@ -26,7 +26,7 @@ const TravelerStatusControls = ({ currentStatus, onStatusChange, travelerId, rea
     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
       {currentStatus === 0 && !readOnly && (
         <Button size="small" variant="contained" startIcon={<StartIcon />} onClick={() => onStatusChange(1)} color="primary">
-          Start
+          Start to work
         </Button>
       )}
       {currentStatus === 1 && !readOnly && (
@@ -35,35 +35,22 @@ const TravelerStatusControls = ({ currentStatus, onStatusChange, travelerId, rea
             Freeze
           </Button>
           <Button size="small" variant="contained" startIcon={<CompleteIcon />} onClick={() => onStatusChange(1.5)} color="primary">
-            Complete
-          </Button>
-        </>
+                    Submit for completion
+                  </Button>        </>
       )}
       {currentStatus === 1.5 && !readOnly && (
         <>
           <Button size="small" variant="contained" startIcon={<ApproveIcon />} onClick={() => onStatusChange(2)} color="success">
-            Approve
-          </Button>
-          <Button size="small" variant="contained" startIcon={<MoreWorkIcon />} onClick={() => onStatusChange(1)} color="warning">
+                    Approve completion
+                  </Button>          <Button size="small" variant="contained" startIcon={<MoreWorkIcon />} onClick={() => onStatusChange(1)} color="warning">
             More Work
           </Button>
         </>
       )}
       {currentStatus === 2 && !readOnly && (
-        <>
-          <Button size="small" variant="contained" startIcon={<MoreWorkIcon />} onClick={() => onStatusChange(1)} color="warning">
-            More Work
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<DownloadIcon />}
-            onClick={() => window.open(`/travelers/${travelerId}/print`, '_blank')}
-            color="primary"
-          >
-            PDF
-          </Button>
-        </>
+        <Button size="small" variant="contained" startIcon={<MoreWorkIcon />} onClick={() => onStatusChange(1)} color="warning">
+          More Work
+        </Button>
       )}
       {currentStatus === 3 && !readOnly && (
         <Button size="small" variant="contained" startIcon={<InputIcon />} onClick={() => onStatusChange(1)} color="primary">
