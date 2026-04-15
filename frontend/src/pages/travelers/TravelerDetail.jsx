@@ -8,12 +8,14 @@ import InputFieldRenderer from '@/components/forms/inputs/InputFieldRenderer'
 import FieldWithHistory from '@/components/travelers/FieldWithHistory'
 import DiscrepancyForm from '@/components/travelers/discrepancy/DiscrepancyForm'
 import TravelerStatusControls from '@/components/travelers/TravelerStatusControls'
+import TravelerInfo from '@/components/travelers/TravelerInfo'
 import {
   Box,
   Typography,
   Button,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Paper
 } from '@mui/material'
 import { ArrowBack as BackIcon } from '@mui/icons-material'
 
@@ -263,6 +265,9 @@ function TravelerDetail() {
             </Box>
           </Box>
           
+          {/* Traveler Information */}
+          <TravelerInfo traveler={currentTraveler} />
+          
           {/* Discrepancy Log */}
           <DiscrepancyForm
             discrepancyFormFields={discrepancyFormFields}
@@ -281,7 +286,7 @@ function TravelerDetail() {
                 </Typography>
               </Box>
               <Box id="traveler-section" ref={travelerRef}>
-                <Box sx={{ p: 3, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                <Paper variant="outlined" sx={{ p: 3 }}>
                   {currentTraveler.form.json.map((element) => {
                     // section, instruction and figure controls are rendered directly without history and notes
                     if (element.type === 'section' || element.type === 'instruction' || element.type === 'figure') {
@@ -350,7 +355,7 @@ function TravelerDetail() {
                       />
                     )
                   })}
-                </Box>
+                </Paper>
               </Box>
             </>
           )}
