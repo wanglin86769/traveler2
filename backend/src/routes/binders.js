@@ -8,11 +8,15 @@ const bindersController = require('../controllers/binders');
 
 router.get('/', authenticate, bindersController.getAllBinders);
 
+router.get('/writable', authenticate, bindersController.getWritableBinders);
+
 router.get('/:id', authenticate, bindersController.getBinderById);
 
 router.post('/', authenticate, [
   body('title').notEmpty().withMessage('Title is required')
 ], validateRequest, bindersController.createBinder);
+
+router.post('/:id', authenticate, bindersController.addWorksToBinder);
 
 router.put('/:id/status', authenticate, [
   body('status').isIn([0, 1, 2, 3]).withMessage('Invalid status')

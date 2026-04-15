@@ -26,6 +26,70 @@ const calculateValueProgress = (binder) => {
   return Math.round((finished / total) * 100);
 };
 
+const getWritableBinders = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    
+    // Get user's groups
+    const user = await require('../models/User').User.findById(userId, 'memberOf');
+    const memberOf = user.memberOf || [];
+    
+    const query = {
+      status: { $in: [0, 1] }, // Only New (0) and Active (1) binders are writable
+      $or: [
+        // User created and ownership not transferred
+        {
+          createdBy: userId,
+          owner: { $exists: false }
+        },
+        // User is the owner
+        {
+          owner: userId
+        },
+        // Publicly writable
+        {
+          publicAccess: 1
+        },
+        // User shared with write access
+        {
+          sharedWith: {
+            $elemMatch: {
+              _id: userId,
+              access: 1
+            }
+          }
+        },
+        // Group shared with write access
+        {
+          sharedGroup: {
+            $elemMatch: {
+              _id: { $in: memberOf },
+              access: 1
+            }
+          }
+        }
+      ]
+    };
+
+    const binders = await Binder.find(query)
+      .select('title description status tags createdOn updatedOn')
+      .sort({ updatedOn: -1 })
+      .lean();
+
+    // Ensure binders have createdOn field (use ObjectId timestamp if missing)
+    const bindersWithDates = binders.map(binder => ({
+      ...binder,
+      createdOn: binder.createdOn || binder._id.getTimestamp(),
+      // Only use ObjectId timestamp for updatedOn if it exists, otherwise keep it undefined
+      updatedOn: binder.updatedOn || undefined
+    }));
+
+    res.json(bindersWithDates);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getAllBinders = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status, search, tag, sort = '-updatedOn' } = req.query;
@@ -117,7 +181,9 @@ const createBinder = async (req, res, next) => {
       createdBy: req.user._id,
       owner: req.user._id,
       status: 0,
-      works: []
+      works: [],
+      createdOn: new Date(),
+      updatedOn: new Date()
     });
 
     await binder.save();
@@ -187,7 +253,7 @@ const addWorksToBinder = async (req, res, next) => {
 
     let model;
     if (type === 'traveler') {
-      model = require('../models/Traveler').Traveler;
+      model = Traveler;
     } else if (type === 'binder') {
       model = Binder;
     }
@@ -195,6 +261,7 @@ const addWorksToBinder = async (req, res, next) => {
     const existingWorkIds = binder.works.map(w => w._id.toString());
     const addedIds = [];
     const skippedIds = [];
+    const failedItems = [];
 
     const items = await model.find({
       _id: { $in: ids }
@@ -205,55 +272,62 @@ const addWorksToBinder = async (req, res, next) => {
     }
 
     items.forEach(item => {
-      if (existingWorkIds.includes(item._id.toString())) {
-        skippedIds.push(item._id);
-        return;
-      }
-
-      if (type === 'binder') {
-        if (item._id.toString() === binder._id.toString()) {
-          logger.warn(`Cannot add binder ${item._id} to itself`);
+      try {
+        if (existingWorkIds.includes(item._id.toString())) {
           skippedIds.push(item._id);
           return;
         }
 
-        const hasNestedBinders = item.works.some(w => w.refType === 'binder');
-        if (hasNestedBinders) {
-          logger.warn(`Cannot add binder ${item._id} that contains other binders`);
-          skippedIds.push(item._id);
-          return;
+        if (type === 'binder') {
+          if (item._id.toString() === binder._id.toString()) {
+            throw new Error(`Cannot add binder ${item._id} to itself`);
+          }
+
+          const hasNestedBinders = item.works.some(w => w.refType === 'binder');
+          if (hasNestedBinders) {
+            throw new Error(`Cannot add binder ${item._id} that contains other binders`);
+          }
         }
+
+        const newWork = {
+          _id: item._id,
+          refType: type,
+          addedOn: new Date(),
+          addedBy: req.user._id,
+          status: item.status || 0,
+          value: item.value || 10,
+          sequence: binder.works.length + 1,
+          color: 'blue'
+        };
+
+        binder.works.push(newWork);
+        addedIds.push(item._id);
+        
+      } catch (error) {
+        failedItems.push({
+          id: item._id,
+          title: item.title,
+          error: error.message
+        });
       }
-
-      const newWork = {
-        _id: item._id,
-        refType: type,
-        addedOn: new Date(),
-        addedBy: req.user._id,
-        status: item.status || 0,
-        value: item.value || 10,
-        sequence: binder.works.length + 1,
-        color: 'blue'
-      };
-
-      binder.works.push(newWork);
-      addedIds.push(item._id);
     });
 
-    if (addedIds.length === 0) {
-      throw new ApiError(400, 'No items were added (all already exist or cannot be added)');
+    if (addedIds.length === 0 && failedItems.length === 0) {
+      throw new ApiError(400, 'No items were added');
     }
 
     binder.updatedOn = new Date();
     binder.updatedBy = req.user._id;
-
-    await binder.save();
+    
+    // Use binder's updateProgress method (which will trigger parent updates via post-save hook)
     await binder.updateProgress();
 
     res.status(200).json({
       ...binder.toObject(),
       added: addedIds.length,
-      skipped: skippedIds.length
+      skipped: skippedIds.length,
+      failed: failedItems.length,
+      failedItems
     });
   } catch (error) {
     next(error);
@@ -539,6 +613,7 @@ const archiveBinder = async (req, res, next) => {
 
 module.exports = {
   getAllBinders,
+  getWritableBinders,
   getBinderById,
   createBinder,
   updateBinder,

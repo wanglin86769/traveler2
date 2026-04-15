@@ -221,7 +221,7 @@ function BinderDetail() {
     <Box>
       {/* Title and action buttons area */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
-        <Button startIcon={<BackIcon />} onClick={() => navigate('/binders')} size="small">
+        <Button startIcon={<BackIcon />} onClick={() => navigate(-1)} size="small">
           Back
         </Button>
         <Typography variant="h5" fontWeight={600} sx={{ flexGrow: 1 }}>

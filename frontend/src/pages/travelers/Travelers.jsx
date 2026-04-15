@@ -713,7 +713,10 @@ function Travelers() {
         onClose={() => setAddToBinderDialogOpen(false)}
         itemIds={Array.from(selectedTravelers)}
         itemType="traveler"
-        sourceItem={selectedTravelers.size === 1 ? items.find(item => selectedTravelers.has(item._id)) : null}
+        sourceItem={selectedTravelers.size === 1 
+          ? items.find(item => selectedTravelers.has(item._id)) 
+          : items.filter(item => selectedTravelers.has(item._id))
+        }
       />
 
       {/* Snackbar for notifications */}

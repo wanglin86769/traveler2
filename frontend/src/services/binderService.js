@@ -5,6 +5,10 @@ const binderService = {
     return api.get('/binders', { params })
   },
 
+  getWritableBinders: (params = {}) => {
+    return api.get('/binders/writable', { params })
+  },
+
   getBinder: (id) => {
     return api.get(`/binders/${id}`)
   },
@@ -44,6 +48,7 @@ const binderService = {
 
 // Named exports for individual functions
 export const getBinders = binderService.getBinders
+export const getWritableBinders = binderService.getWritableBinders
 export const getBinder = binderService.getBinder
 export const createBinder = binderService.createBinder
 export const updateBinder = binderService.updateBinder
