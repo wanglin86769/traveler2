@@ -37,7 +37,7 @@ import {
 import { getBinders, createBinder as createBinderApi } from '@/services/binderService'
 import AddToBinderDialog from '@/components/common/AddToBinderDialog'
 
-function Binders() {
+function MyBinders() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -340,4 +340,4 @@ function Binders() {
   )
 }
 
-export default Binders
+export default MyBinders

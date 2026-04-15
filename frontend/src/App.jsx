@@ -20,12 +20,14 @@ import FormShare from './pages/forms/FormShare'
 import MyReviews from './pages/reviews/MyReviews'
 import ReleasedForms from './pages/released-forms/ReleasedForms'
 import ReleasedFormDetail from './pages/released-forms/ReleasedFormDetail'
-import Travelers from './pages/travelers/Travelers'
+import MyTravelers from './pages/travelers/MyTravelers'
+import PublicTravelers from './pages/travelers/PublicTravelers'
 import TravelerDetail from './pages/travelers/TravelerDetail'
 import TravelerInput from './pages/travelers/TravelerInput'
 import TravelerShare from './pages/travelers/TravelerShare'
-import Binders from './pages/binders/Binders'
+import MyBinders from './pages/binders/MyBinders'
 import BinderDetail from './pages/binders/BinderDetail'
+import PublicBinders from './pages/binders/PublicBinders'
 import Groups from './pages/admin/Groups'
 import Profile from './pages/user/Profile'
 import User from './pages/admin/User'
@@ -88,15 +90,6 @@ function App() {
           <Route path="/docs" element={<Docs />} />
 
           {/* Forms Routes */}
-          <Route path="/forms" element={
-            <KeepAlive 
-              cacheKey="forms-page" 
-              maxAge={10 * 60 * 1000}
-              autoFreeze={false}
-            >
-              <ReleasedForms />
-            </KeepAlive>
-          } />
           <Route path="/forms/my-forms" element={
             <KeepAlive 
               cacheKey="my-forms-page" 
@@ -115,6 +108,15 @@ function App() {
               <AllForms />
             </KeepAlive>
           } />
+          <Route path="/forms/public-forms" element={
+            <KeepAlive 
+              cacheKey="public-forms-page" 
+              maxAge={10 * 60 * 1000}
+              autoFreeze={false}
+            >
+              <PublicForms />
+            </KeepAlive>
+          } />
           <Route path="/forms/:id" element={<FormDetail />} />
           <Route path="/forms/:id/edit" element={<FormBuilder />} />
           <Route path="/forms/:id/share" element={<FormShare />} />
@@ -122,6 +124,9 @@ function App() {
           <Route path="/forms/:id/reviewers" element={<FormReviewerList />} />
           <Route path="/forms/:id/review" element={<FormReview />} />
           
+          {/* Reviews Routes */}
+          <Route path="/reviews/my-reviews" element={<MyReviews />} />
+
           {/* Released Forms Routes */}
           <Route path="/released-forms" element={
             <KeepAlive 
@@ -134,25 +139,14 @@ function App() {
           } />
           <Route path="/released-forms/:id" element={<ReleasedFormDetail />} />
           
-          {/* Public Forms Routes */}
-          <Route path="/forms/public-forms" element={
-            <KeepAlive 
-              cacheKey="public-forms-page" 
-              maxAge={10 * 60 * 1000}
-              autoFreeze={false}
-            >
-              <PublicForms />
-            </KeepAlive>
-          } />
-          
           {/* Travelers Routes */}
-          <Route path="/travelers" element={
+          <Route path="/travelers/public-travelers" element={
             <KeepAlive 
-              cacheKey="travelers-page" 
+              cacheKey="public-travelers-page" 
               maxAge={10 * 60 * 1000}
               autoFreeze={false}
             >
-              <Travelers />
+              <PublicTravelers />
             </KeepAlive>
           } />
           <Route path="/travelers/my-travelers" element={
@@ -161,21 +155,21 @@ function App() {
               maxAge={10 * 60 * 1000}
               autoFreeze={false}
             >
-              <Travelers />
+              <MyTravelers />
             </KeepAlive>
           } />
-          <Route path="/travelers/:id" element={<TravelerDetail />} />
           <Route path="/travelers/:id/input" element={<TravelerInput />} />
           <Route path="/travelers/:id/share" element={<TravelerShare />} />
+          <Route path="/travelers/:id" element={<TravelerDetail />} />
           
           {/* Binders Routes */}
-          <Route path="/binders" element={
+          <Route path="/binders/public-binders" element={
             <KeepAlive 
-              cacheKey="binders-page" 
+              cacheKey="public-binders-page" 
               maxAge={10 * 60 * 1000}
               autoFreeze={false}
             >
-              <Binders />
+              <PublicBinders />
             </KeepAlive>
           } />
           <Route path="/binders/my-binders" element={
@@ -184,14 +178,11 @@ function App() {
               maxAge={10 * 60 * 1000}
               autoFreeze={false}
             >
-              <Binders />
+              <MyBinders />
             </KeepAlive>
           } />
           <Route path="/binders/:id" element={<BinderDetail />} />          
           
-          {/* Reviews Routes */}
-          <Route path="/reviews/my-reviews" element={<MyReviews />} />
-
           {/* Admin Route */}
           <Route path="/admin/users" element={<User />} />
           <Route path="/admin/groups" element={<Groups />} />

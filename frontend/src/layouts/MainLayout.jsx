@@ -62,7 +62,7 @@ const menuItems = [
     icon: <TravelerIcon />,
     children: [
       { text: 'My Travelers', icon: <UserIcon />, path: '/travelers/my-travelers' },
-      { text: 'Public Travelers', icon: <PublicIcon />, path: '/travelers' }
+      { text: 'Public Travelers', icon: <PublicIcon />, path: '/travelers/public-travelers' }
     ]
   },
   {
@@ -70,7 +70,7 @@ const menuItems = [
     icon: <BinderIcon />,
     children: [
       { text: 'My Binders', icon: <UserIcon />, path: '/binders/my-binders' },
-      { text: 'Public Binders', icon: <PublicIcon />, path: '/binders' }
+      { text: 'Public Binders', icon: <PublicIcon />, path: '/binders/public-binders' }
     ]
   },
   {

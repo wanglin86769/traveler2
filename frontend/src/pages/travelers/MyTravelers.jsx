@@ -52,7 +52,7 @@ import AddToBinderDialog from '@/components/common/AddToBinderDialog'
 import TravelerTransferOwnershipDialog from '@/components/travelers/TravelerTransferOwnershipDialog'
 import TravelerCloneDialog from '@/components/travelers/TravelerCloneDialog'
 
-function Travelers() {
+function MyTravelers() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
@@ -738,4 +738,4 @@ function Travelers() {
   )
 }
 
-export default Travelers
+export default MyTravelers
