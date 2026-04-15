@@ -5,22 +5,50 @@ const { Log } = require('../models/Traveler');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
 
-const getAllTravelers = async (req, res, next) => {
+// My travelers
+const getMyTravelers = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || '';
     const status = req.query.status ? parseInt(req.query.status) : null;
+    const userId = req.user._id;
 
-    const query = {};
+    let query = {
+      $and: [
+        {
+          $or: [
+            {
+              createdBy: userId,
+              owner: { $exists: false },
+            },
+            {
+              owner: userId,
+            },
+          ],
+        },
+        {
+          $or: [
+            { archived: { $ne: true } },
+            { archived: { $exists: false } },
+          ],
+          status: { $ne: 4 },
+        },
+      ],
+    };
 
+    // Add search conditions
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
+      const searchCondition = {
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      };
+      query = { $and: [query, searchCondition] };
     }
 
+    // Add status filter
     if (status !== null && !isNaN(status)) {
       query.status = status;
     }
@@ -42,6 +70,268 @@ const getAllTravelers = async (req, res, next) => {
         totalPages: Math.ceil(total / limit)
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Transferred travelers
+const getTransferredTravelers = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const status = req.query.status ? parseInt(req.query.status) : null;
+    const userId = req.user._id;
+
+    let query = {
+      $or: [
+        { owner: userId },
+        { createdBy: userId, transferredTo: { $exists: true, $ne: userId } }
+      ],
+      archived: { $ne: true }
+    };
+
+    // Add search conditions
+    if (search) {
+      const searchCondition = {
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      };
+      query = { $and: [query, searchCondition] };
+    }
+
+    // Add status filter
+    if (status !== null && !isNaN(status)) {
+      query.status = status;
+    }
+
+    const total = await Traveler.countDocuments(query);
+
+    const travelers = await Traveler.find(query)
+      .sort({ createdOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    res.json({
+      data: travelers,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Shared travelers
+const getSharedTravelers = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const status = req.query.status ? parseInt(req.query.status) : null;
+    const userId = req.user._id;
+
+    let query = {
+      sharedWith: userId,
+      $or: [{ owner: { $ne: userId } }, { owner: { $exists: false } }],
+      archived: { $ne: true }
+    };
+
+    // Add search conditions
+    if (search) {
+      const searchCondition = {
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      };
+      query = { $and: [query, searchCondition] };
+    }
+
+    // Add status filter
+    if (status !== null && !isNaN(status)) {
+      query.status = status;
+    }
+
+    const total = await Traveler.countDocuments(query);
+
+    const travelers = await Traveler.find(query)
+      .sort({ createdOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    res.json({
+      data: travelers,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Group shared travelers
+const getGroupSharedTravelers = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const status = req.query.status ? parseInt(req.query.status) : null;
+    const userId = req.user._id;
+
+    let query = {
+      sharedGroup: { $exists: true },
+      archived: { $ne: true }
+    };
+
+    // Add search conditions
+    if (search) {
+      const searchCondition = {
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      };
+      query = { $and: [query, searchCondition] };
+    }
+
+    // Add status filter
+    if (status !== null && !isNaN(status)) {
+      query.status = status;
+    }
+
+    const total = await Traveler.countDocuments(query);
+
+    const travelers = await Traveler.find(query)
+      .sort({ createdOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    res.json({
+      data: travelers,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Archived travelers
+const getArchivedTravelers = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const status = req.query.status ? parseInt(req.query.status) : null;
+    const userId = req.user._id;
+
+    let query = {
+      $and: [
+        {
+          $or: [
+            {
+              createdBy: userId,
+              owner: { $exists: false },
+            },
+            {
+              owner: userId,
+            },
+          ],
+        },
+        {
+          $or: [
+            {
+              archived: true,
+            },
+            {
+              status: 4,
+            },
+          ],
+        },
+      ],
+    };
+
+    // Add search conditions
+    if (search) {
+      const searchCondition = {
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      };
+      query = { $and: [query, searchCondition] };
+    }
+
+    // Add status filter
+    if (status !== null && !isNaN(status)) {
+      query.status = status;
+    }
+
+    const total = await Traveler.countDocuments(query);
+
+    const travelers = await Traveler.find(query)
+      .sort({ createdOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    res.json({
+      data: travelers,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Legacy function for backward compatibility
+const getAllTravelers = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const status = req.query.status ? parseInt(req.query.status) : null;
+    const type = req.query.type || 'my'; // 'my', 'transferred', 'shared', 'groupShared', 'archived'
+    const userId = req.user._id;
+
+    // Route to appropriate function based on type
+    switch (type) {
+      case 'transferred':
+        return getTransferredTravelers(req, res, next);
+      case 'shared':
+        return getSharedTravelers(req, res, next);
+      case 'groupShared':
+        return getGroupSharedTravelers(req, res, next);
+      case 'archived':
+        return getArchivedTravelers(req, res, next);
+      case 'my':
+      default:
+        return getMyTravelers(req, res, next);
+    }
   } catch (error) {
     next(error);
   }
@@ -288,6 +578,11 @@ const updateTravelerStatus = async (req, res, next) => {
 };
 
 module.exports = {
+  getMyTravelers,
+  getTransferredTravelers,
+  getSharedTravelers,
+  getGroupSharedTravelers,
+  getArchivedTravelers,
   getAllTravelers,
   createTraveler,
   getTravelerById,

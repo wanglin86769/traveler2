@@ -1,6 +1,32 @@
 import api from './api'
 
 const travelerService = {
+  // My travelers
+  getMyTravelers: (params = {}) => {
+    return api.get('/travelers/my', { params })
+  },
+
+  // Transferred travelers
+  getTransferredTravelers: (params = {}) => {
+    return api.get('/travelers/transferred', { params })
+  },
+
+  // Shared travelers
+  getSharedTravelers: (params = {}) => {
+    return api.get('/travelers/shared', { params })
+  },
+
+  // Group shared travelers
+  getGroupSharedTravelers: (params = {}) => {
+    return api.get('/travelers/group-shared', { params })
+  },
+
+  // Archived travelers
+  getArchivedTravelers: (params = {}) => {
+    return api.get('/travelers/archived', { params })
+  },
+
+  // Legacy function for backward compatibility
   getTravelers: (params = {}) => {
     return api.get('/travelers', { params })
   },
@@ -137,6 +163,11 @@ const travelerService = {
 
 // Named exports for individual functions
 export const getTravelers = travelerService.getTravelers
+export const getMyTravelers = travelerService.getMyTravelers
+export const getTransferredTravelers = travelerService.getTransferredTravelers
+export const getSharedTravelers = travelerService.getSharedTravelers
+export const getGroupSharedTravelers = travelerService.getGroupSharedTravelers
+export const getArchivedTravelers = travelerService.getArchivedTravelers
 export const getTraveler = travelerService.getTraveler
 export const createTraveler = travelerService.createTraveler
 export const updateTraveler = travelerService.updateTraveler

@@ -42,7 +42,7 @@ import {
   Edit as EditIcon,
   Person as PersonIcon
 } from '@mui/icons-material'
-import { getTravelers, archiveTraveler } from '@/services/travelerService'
+import { getTravelers, archiveTraveler, getMyTravelers, getTransferredTravelers, getSharedTravelers, getGroupSharedTravelers, getArchivedTravelers } from '@/services/travelerService'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import AddToBinderDialog from '@/components/common/AddToBinderDialog'
 
@@ -61,27 +61,19 @@ function Travelers() {
   const [isReloading, setIsReloading] = useState(false)
   const [transferDialogOpen, setTransferDialogOpen] = useState(false)
 
+  // Tab definitions
+  const tabs = [
+    { label: 'My travelers', api: getMyTravelers },
+    { label: 'Transferred travelers', api: getTransferredTravelers },
+    { label: 'Shared travelers', api: getSharedTravelers },
+    { label: 'Group shared travelers', api: getGroupSharedTravelers },
+    { label: 'Archived travelers', api: getArchivedTravelers }
+  ]
+
   // Use React Query to get travelers list based on current tab
   const { data, isLoading, error } = useQuery({
     queryKey: ['travelers', currentTab, { page: page + 1, limit: rowsPerPage, search, status: statusFilter }],
-    queryFn: () => {
-      const params = { page: page + 1, limit: rowsPerPage, search, status: statusFilter }
-      
-      switch (currentTab) {
-        case 0: // My travelers
-          return getTravelers(params)
-        case 1: // Transferred travelers
-          return getTravelers({ ...params, type: 'transferred' })
-        case 2: // Shared travelers
-          return getTravelers({ ...params, type: 'shared' })
-        case 3: // Group shared travelers
-          return getTravelers({ ...params, type: 'groupShared' })
-        case 4: // Archived travelers
-          return getTravelers({ ...params, type: 'archived' })
-        default:
-          return getTravelers(params)
-      }
-    },
+    queryFn: () => tabs[currentTab].api({ page: page + 1, limit: rowsPerPage, search, status: statusFilter }),
   })
 
   // Archive mutation
@@ -90,7 +82,8 @@ function Travelers() {
       return Promise.all(travelerIds.map(id => archiveTraveler(id)))
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['travelers', currentTab] })
+      // Invalidate all traveler queries to ensure all tabs are updated
+      queryClient.invalidateQueries({ queryKey: ['travelers'] })
       setSelectedTravelers(new Set())
       setArchiveDialogOpen(false)
     },
@@ -336,11 +329,9 @@ function Travelers() {
                 setPage(0)
                 setSelectedTravelers(new Set())
               }}>
-            <Tab label="My travelers" sx={{ textTransform: 'none' }} />
-            <Tab label="Transferred travelers" sx={{ textTransform: 'none' }} />
-            <Tab label="Shared travelers" sx={{ textTransform: 'none' }} />
-            <Tab label="Group shared travelers" sx={{ textTransform: 'none' }} />
-            <Tab label="Archived travelers" sx={{ textTransform: 'none' }} />
+            {tabs.map((tab, index) => (
+              <Tab key={index} label={tab.label} sx={{ textTransform: 'none' }} />
+            ))}
           </Tabs>
 
           {/* Reload table button */}
@@ -593,8 +584,17 @@ function Travelers() {
         <DialogContent>
           <Typography>
             Are you sure you want to archive {selectedTravelers.size} traveler(s)?
-            Only the owner will be able to see them after archiving.
           </Typography>
+          <Box sx={{ mt: 2, bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+            {Array.from(selectedTravelers).map(travelerId => {
+              const traveler = items.find(item => item._id === travelerId)
+              return traveler ? (
+                <Typography key={travelerId} variant="body2" sx={{ py: 0.5 }}>
+                  • {traveler.title}
+                </Typography>
+              ) : null
+            })}
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setArchiveDialogOpen(false)}>Cancel</Button>
