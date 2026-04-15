@@ -5,6 +5,9 @@ const { body } = require('express-validator');
 const { validateRequest } = require('../middleware/validation');
 const travelersController = require('../controllers/traveler');
 
+// Public travelers
+router.get('/public', authenticate, travelersController.getPublicTravelers);
+
 // My travelers
 router.get('/my', authenticate, travelersController.getMyTravelers);
 

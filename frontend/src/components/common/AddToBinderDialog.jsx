@@ -300,7 +300,7 @@ function AddToBinderDialog({ open, onClose, itemIds, itemType = 'traveler', sour
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation()
-                            window.open(`/binders/${binder._id}`, '_blank')
+                            window.open(`/binders/public-binders/${binder._id}`, '_blank')
                           }}
                           sx={{ color: 'primary.main' }}
                         >

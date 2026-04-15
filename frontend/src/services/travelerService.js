@@ -1,6 +1,11 @@
 import api from './api'
 
 const travelerService = {
+  // Public travelers
+  getPublicTravelers: (params = {}) => {
+    return api.get('/travelers/public', { params })
+  },
+
   // My travelers
   getMyTravelers: (params = {}) => {
     return api.get('/travelers/my', { params })
@@ -170,6 +175,7 @@ const travelerService = {
 }
 
 // Named exports for individual functions
+export const getPublicTravelers = travelerService.getPublicTravelers
 export const getTravelers = travelerService.getTravelers
 export const getMyTravelers = travelerService.getMyTravelers
 export const getTransferredTravelers = travelerService.getTransferredTravelers

@@ -6,6 +6,65 @@ const { User, Group } = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
 
+// Public travelers
+const getPublicTravelers = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+
+    let query = {
+      publicAccess: { $in: [0, 1] },
+      $and: [
+        {
+          $or: [
+            { archived: { $ne: true } },
+            { archived: { $exists: false } },
+          ],
+        },
+        {
+          status: { $ne: 4 },
+        },
+      ],
+    };
+
+    // Add search conditions
+    if (search) {
+      const searchCondition = {
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      };
+      query = { $and: [query, searchCondition] };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const travelers = await Traveler.find(query)
+      .select('title description status devices tags createdBy clonedBy createdOn deadline updatedBy updatedOn sharedWith sharedGroup finishedInput totalInput')
+      .sort({ updatedOn: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec();
+
+    const total = await Traveler.countDocuments(query);
+
+    res.json({
+      data: travelers,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // My travelers
 const getMyTravelers = async (req, res, next) => {
   try {
@@ -735,6 +794,7 @@ const transferOwnership = async (req, res, next) => {
 };
 
 module.exports = {
+  getPublicTravelers,
   getMyTravelers,
   getTransferredTravelers,
   getSharedTravelers,
