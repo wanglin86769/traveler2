@@ -23,6 +23,7 @@ import ReleasedFormDetail from './pages/released-forms/ReleasedFormDetail'
 import Travelers from './pages/travelers/Travelers'
 import TravelerDetail from './pages/travelers/TravelerDetail'
 import TravelerInput from './pages/travelers/TravelerInput'
+import TravelerShare from './pages/travelers/TravelerShare'
 import Binders from './pages/binders/Binders'
 import BinderDetail from './pages/binders/BinderDetail'
 import Groups from './pages/admin/Groups'
@@ -165,6 +166,7 @@ function App() {
           } />
           <Route path="/travelers/:id" element={<TravelerDetail />} />
           <Route path="/travelers/:id/input" element={<TravelerInput />} />
+          <Route path="/travelers/:id/share" element={<TravelerShare />} />
           
           {/* Binders Routes */}
           <Route path="/binders" element={

@@ -43,7 +43,8 @@ import {
   Public as PublicIcon,
   Visibility as VisibilityIcon,
   Edit as EditIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  Share as ShareIcon
 } from '@mui/icons-material'
 import { getTravelers, archiveTraveler, getMyTravelers, getTransferredTravelers, getSharedTravelers, getGroupSharedTravelers, getArchivedTravelers, transferOwnership } from '@/services/travelerService'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -334,7 +335,7 @@ function Travelers() {
             startIcon={<ContentCopyIcon />}
             onClick={() => setAddToBinderDialogOpen(true)}
             disabled={selectedTravelers.size === 0}
-            sx={{ bgcolor: '#1890ff', '&:hover': { bgcolor: '#096dd9' } }}
+            color="secondary"
           >
             Clone
           </Button>
@@ -343,7 +344,7 @@ function Travelers() {
             startIcon={<FolderIcon />}
             onClick={() => setAddToBinderDialogOpen(true)}
             disabled={selectedTravelers.size === 0}
-            sx={{ bgcolor: '#f39c12', color: '#212121', '&:hover': { bgcolor: '#e67e22' } }}
+            sx={{ bgcolor: '#4CAF50', color: 'white', '&:hover': { bgcolor: '#43A047' } }}
           >
             Add to Binder
           </Button>
@@ -384,7 +385,7 @@ function Travelers() {
               startIcon={<ArchiveIcon />}
               onClick={handleArchive}
               disabled={selectedTravelers.size === 0}
-              sx={{ bgcolor: '#FF9800', color: '#212121', '&:hover': { bgcolor: '#FB8C00' } }}
+              sx={{ bgcolor: '#ef4444', color: 'white', '&:hover': { bgcolor: '#dc2626' } }}
             >
               Archive
             </Button>
@@ -500,14 +501,14 @@ function Travelers() {
                       <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                         <Typography variant="body2">
                           {traveler.sharedWith && traveler.sharedWith.length > 0 
-                            ? traveler.sharedWith.map(u => u.name || u).join(', ') 
+                            ? traveler.sharedWith.map(u => u.username || u.name || u).join(', ') 
                             : '-'}
                         </Typography>
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                         <Typography variant="body2">
                           {traveler.sharedGroup && traveler.sharedGroup.length > 0 
-                            ? traveler.sharedGroup.map(g => g.name || g).join(', ') 
+                            ? traveler.sharedGroup.map(g => g.groupname || g.name || g).join(', ') 
                             : '-'}
                         </Typography>
                       </TableCell>
@@ -541,18 +542,29 @@ function Travelers() {
                           <IconButton 
                             size="medium"
                             onClick={() => navigate(`/travelers/${traveler._id}`)}
-                            sx={{ color: '#3B82F6', '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.08)' } }}
+                            sx={{ color: '#1A73E8', '&:hover': { backgroundColor: 'rgba(26, 115, 232, 0.08)' } }}
                             aria-label="View details"
+                            title="View details"
                           >
                             <VisibilityIcon />
                           </IconButton>
                           <IconButton 
                             size="medium"
                             onClick={() => navigate(`/travelers/${traveler._id}/input`)}
-                            sx={{ color: '#F97316', '&:hover': { backgroundColor: 'rgba(249, 115, 22, 0.08)' } }}
+                            sx={{ color: '#FB8C00', '&:hover': { backgroundColor: 'rgba(251, 140, 0, 0.08)' } }}
                             aria-label="Enter data"
+                            title="Enter data"
                           >
                             <EditIcon />
+                          </IconButton>
+                          <IconButton 
+                            size="medium"
+                            onClick={() => navigate(`/travelers/${traveler._id}/share`)}
+                            sx={{ color: '#7c3aed', '&:hover': { backgroundColor: 'rgba(124, 58, 237, 0.08)' } }}
+                            aria-label="Share traveler"
+                            title="Share traveler"
+                          >
+                            <ShareIcon />
                           </IconButton>
                         </Box>
                       </TableCell>

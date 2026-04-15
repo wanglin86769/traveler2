@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Traveler } = require('../models/Traveler');
 const { ReleasedForm } = require('../models/ReleasedForm');
 const { Log } = require('../models/Traveler');
-const { User } = require('../models/User');
+const { User, Group } = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
 
@@ -134,27 +134,39 @@ const getTransferredTravelers = async (req, res, next) => {
 // Shared travelers
 const getSharedTravelers = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const search = req.query.search || '';
+    const { page = 1, limit = 20, search, sort = '-updatedOn' } = req.query;
     const status = req.query.status ? parseInt(req.query.status) : null;
-    const userId = req.user._id;
 
-    let query = {
-      sharedWith: userId,
-      $or: [{ owner: { $ne: userId } }, { owner: { $exists: false } }],
+    const user = await User.findById(req.user._id, 'travelers');
+
+    if (!user) {
+      return res.status(400).json({ message: 'Cannot identify the current user' });
+    }
+
+    // Filter out invalid ObjectIds
+    const validTravelerIds = (user.travelers || []).filter(id => {
+      try {
+        return require('mongoose').Types.ObjectId.isValid(id);
+      } catch (e) {
+        return false;
+      }
+    });
+
+    // Build query
+    const query = {
+      _id: { $in: validTravelerIds },
       archived: { $ne: true }
     };
 
-    // Add search conditions
+    // Add search filter if provided
     if (search) {
-      const searchCondition = {
+      query.$and = query.$and || [];
+      query.$and.push({
         $or: [
           { title: { $regex: search, $options: 'i' } },
           { description: { $regex: search, $options: 'i' } }
         ]
-      };
-      query = { $and: [query, searchCondition] };
+      });
     }
 
     // Add status filter
@@ -162,21 +174,22 @@ const getSharedTravelers = async (req, res, next) => {
       query.status = status;
     }
 
-    const total = await Traveler.countDocuments(query);
-
     const travelers = await Traveler.find(query)
-      .sort({ createdOn: -1 })
+      .select('title description status tags owner updatedBy updatedOn publicAccess sharedWith sharedGroup')
+      .sort(sort)
       .skip((page - 1) * limit)
-      .limit(limit)
+      .limit(parseInt(limit))
       .lean();
+
+    const total = await Traveler.countDocuments(query);
 
     res.json({
       data: travelers,
       pagination: {
-        page,
-        limit,
+        page: parseInt(page),
+        limit: parseInt(limit),
         total,
-        totalPages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -187,26 +200,40 @@ const getSharedTravelers = async (req, res, next) => {
 // Group shared travelers
 const getGroupSharedTravelers = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const search = req.query.search || '';
+    const { page = 1, limit = 20, search, sort = '-updatedOn' } = req.query;
     const status = req.query.status ? parseInt(req.query.status) : null;
-    const userId = req.user._id;
 
-    let query = {
-      sharedGroup: { $exists: true },
+    // Find all groups that the current user is a member of
+    const groups = await Group.find({
+      members: req.user._id,
+      deleted: { $ne: true }
+    }).select('travelers');
+
+    // Merge all group travelers, remove duplicates
+    const travelerIds = [];
+    for (const group of groups) {
+      for (const travelerId of group.travelers) {
+        if (!travelerIds.includes(travelerId)) {
+          travelerIds.push(travelerId);
+        }
+      }
+    }
+
+    // Build query
+    const query = {
+      _id: { $in: travelerIds },
       archived: { $ne: true }
     };
 
-    // Add search conditions
+    // Add search filter if provided
     if (search) {
-      const searchCondition = {
+      query.$and = query.$and || [];
+      query.$and.push({
         $or: [
           { title: { $regex: search, $options: 'i' } },
           { description: { $regex: search, $options: 'i' } }
         ]
-      };
-      query = { $and: [query, searchCondition] };
+      });
     }
 
     // Add status filter
@@ -214,21 +241,22 @@ const getGroupSharedTravelers = async (req, res, next) => {
       query.status = status;
     }
 
-    const total = await Traveler.countDocuments(query);
-
     const travelers = await Traveler.find(query)
-      .sort({ createdOn: -1 })
+      .select('title description status tags owner updatedBy updatedOn publicAccess sharedWith sharedGroup')
+      .sort(sort)
       .skip((page - 1) * limit)
-      .limit(limit)
+      .limit(parseInt(limit))
       .lean();
+
+    const total = await Traveler.countDocuments(query);
 
     res.json({
       data: travelers,
       pagination: {
-        page,
-        limit,
+        page: parseInt(page),
+        limit: parseInt(limit),
         total,
-        totalPages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
