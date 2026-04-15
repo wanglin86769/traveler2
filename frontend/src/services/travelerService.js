@@ -43,6 +43,10 @@ const travelerService = {
     return api.post('/travelers', data)
   },
 
+  cloneTraveler: (id, title) => {
+    return api.post(`/travelers/${id}/clone`, { title })
+  },
+
   updateTraveler: (id, data) => {
     return api.put(`/travelers/${id}`, data)
   },
@@ -174,6 +178,7 @@ export const getGroupSharedTravelers = travelerService.getGroupSharedTravelers
 export const getArchivedTravelers = travelerService.getArchivedTravelers
 export const getTraveler = travelerService.getTraveler
 export const createTraveler = travelerService.createTraveler
+export const cloneTraveler = travelerService.cloneTraveler
 export const updateTraveler = travelerService.updateTraveler
 export const deleteTraveler = travelerService.deleteTraveler
 export const updateStatus = travelerService.updateStatus

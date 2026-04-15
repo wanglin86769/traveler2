@@ -37,6 +37,8 @@ router.put('/:id', authenticate, travelersController.updateTraveler);
 
 router.delete('/:id', authenticate, travelersController.deleteTraveler);
 
+router.post('/:id/clone', authenticate, travelersController.cloneTraveler);
+
 router.put('/:id/archive', authenticate, travelersController.archiveTraveler);
 
 router.put('/:id/status', authenticate, travelersController.updateTravelerStatus);

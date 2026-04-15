@@ -46,10 +46,11 @@ import {
   Person as PersonIcon,
   Share as ShareIcon
 } from '@mui/icons-material'
-import { getTravelers, archiveTraveler, getMyTravelers, getTransferredTravelers, getSharedTravelers, getGroupSharedTravelers, getArchivedTravelers, transferOwnership } from '@/services/travelerService'
+import { getTravelers, archiveTraveler, getMyTravelers, getTransferredTravelers, getSharedTravelers, getGroupSharedTravelers, getArchivedTravelers, transferOwnership, cloneTraveler } from '@/services/travelerService'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import AddToBinderDialog from '@/components/common/AddToBinderDialog'
 import TravelerTransferOwnershipDialog from '@/components/travelers/TravelerTransferOwnershipDialog'
+import TravelerCloneDialog from '@/components/travelers/TravelerCloneDialog'
 
 function Travelers() {
   const navigate = useNavigate()
@@ -63,6 +64,7 @@ function Travelers() {
   const [selectedTravelers, setSelectedTravelers] = useState(new Set())
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
   const [addToBinderDialogOpen, setAddToBinderDialogOpen] = useState(false)
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false)
   const [currentTab, setCurrentTab] = useState(0)
   const [isReloading, setIsReloading] = useState(false)
   const [transferDialogOpen, setTransferDialogOpen] = useState(false)
@@ -117,6 +119,28 @@ function Travelers() {
     }
   })
 
+  // Clone mutation
+  const cloneMutation = useMutation({
+    mutationFn: async (titles) => {
+      const clonePromises = Array.from(selectedTravelers).map((travelerId) => {
+        const traveler = items.find(item => item._id === travelerId)
+        const title = titles[travelerId] || `${traveler?.title} clone`
+        return cloneTraveler(travelerId, title)
+      })
+      return Promise.all(clonePromises)
+    },
+    onSuccess: () => {
+      setSnackbar({ open: true, message: 'Travelers cloned successfully', severity: 'success' })
+      setCloneDialogOpen(false)
+      setSelectedTravelers(new Set())
+      queryClient.invalidateQueries({ queryKey: ['travelers'] })
+    },
+    onError: (error) => {
+      console.error('Clone error:', error)
+      setSnackbar({ open: true, message: error.response?.data?.message || 'Failed to clone travelers', severity: 'error' })
+    }
+  })
+
   const items = data?.data || []
   const pagination = data?.pagination || {}
 
@@ -166,6 +190,18 @@ function Travelers() {
 
   const handleConfirmTransfer = (userId) => {
     transferOwnershipMutation.mutate(userId)
+  }
+
+  const handleClone = () => {
+    if (selectedTravelers.size === 0) {
+      setSnackbar({ open: true, message: 'Please select at least one traveler', severity: 'warning' })
+      return
+    }
+    setCloneDialogOpen(true)
+  }
+
+  const handleConfirmClone = (titles) => {
+    cloneMutation.mutate(titles)
   }
 
   const isAllSelected = items.length > 0 && selectedTravelers.size === items.length
@@ -333,7 +369,7 @@ function Travelers() {
           <Button
             variant="contained"
             startIcon={<ContentCopyIcon />}
-            onClick={() => setAddToBinderDialogOpen(true)}
+            onClick={handleClone}
             disabled={selectedTravelers.size === 0}
             color="secondary"
           >
@@ -659,6 +695,17 @@ function Travelers() {
         })}
         currentUserId={user?._id}
         isTransferring={transferOwnershipMutation.isPending}
+      />
+
+      <TravelerCloneDialog
+        open={cloneDialogOpen}
+        onClose={() => setCloneDialogOpen(false)}
+        onConfirm={handleConfirmClone}
+        selectedTravelers={Array.from(selectedTravelers).map(travelerId => {
+          const traveler = items.find(item => item._id === travelerId)
+          return traveler || { _id: travelerId, title: 'Unknown' }
+        })}
+        isCloning={cloneMutation.isPending}
       />
 
       <AddToBinderDialog

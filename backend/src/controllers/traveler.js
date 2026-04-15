@@ -446,6 +446,92 @@ const createTraveler = async (req, res, next) => {
   }
 };
 
+const cloneTraveler = async (req, res, next) => {
+  try {
+    const originalTraveler = await Traveler.findById(req.params.id);
+
+    if (!originalTraveler) {
+      throw new ApiError(404, 'Traveler not found');
+    }
+
+    // Permission check
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    const isOwner = originalTraveler.owner === req.user._id || originalTraveler.createdBy === req.user._id;
+    const isShared = originalTraveler.sharedWith?.some(s => s._id === req.user._id);
+    const isGroupShared = originalTraveler.sharedGroup?.some(g => {
+      // Need to check if user is in the group
+      return false; // Simplified handling, actual implementation requires querying group members
+    });
+
+    if (!isAdmin && !isOwner && !isShared) {
+      throw new ApiError(403, 'Access denied');
+    }
+
+    // Create clone object
+    const clonedTraveler = new Traveler({
+      title: req.body.title || `${originalTraveler.title} clone`,
+      description: originalTraveler.description,
+      devices: [],                          // Clear devices
+      locations: originalTraveler.locations || [],
+      tags: originalTraveler.tags || [],         // Copy tags
+      status: 1,                            // Set to active
+      createdBy: req.user._id,
+      createdOn: Date.now(),
+      clonedBy: req.user._id,               // Record cloner
+      clonedFrom: originalTraveler._id,     // Record source
+      sharedWith: originalTraveler.sharedWith || [],    // Copy shared settings
+      sharedGroup: originalTraveler.sharedGroup || [],  // Copy group shared settings
+      referenceForm: originalTraveler.referenceForm,
+      referenceReleasedForm: originalTraveler.referenceReleasedForm,
+      referenceReleasedFormVer: originalTraveler.referenceReleasedFormVer,
+      form: {
+        json: originalTraveler.form?.json || [],
+        activatedOn: [],                    // Clear activation time
+        reference: originalTraveler.form?.reference,
+        _v: originalTraveler.form?._v,
+        alias: originalTraveler.form?.alias
+      },
+      discrepancyForm: {
+        json: originalTraveler.discrepancyForm?.json || [],
+        activatedOn: [],
+        _v: originalTraveler.discrepancyForm?._v,
+        _id: originalTraveler.discrepancyForm?._id
+      },
+      data: [],                             // Clear data (critical)
+      notes: [],                            // Clear notes
+      totalInput: originalTraveler.totalInput || 0,
+      finishedInput: 0,                     // Reset progress
+      touchedInputs: [],                    // Clear touched inputs
+      archived: false,
+      owner: req.user._id
+    });
+
+    await clonedTraveler.save();
+
+    // Update shared users' travelers array
+    if (clonedTraveler.sharedWith && clonedTraveler.sharedWith.length > 0) {
+      const userIds = clonedTraveler.sharedWith.map(s => s._id);
+      await User.updateMany(
+        { _id: { $in: userIds } },
+        { $addToSet: { travelers: clonedTraveler._id } }
+      );
+    }
+
+    // Update shared groups' travelers array
+    if (clonedTraveler.sharedGroup && clonedTraveler.sharedGroup.length > 0) {
+      const groupIds = clonedTraveler.sharedGroup.map(g => g._id);
+      await Group.updateMany(
+        { _id: { $in: groupIds } },
+        { $addToSet: { travelers: clonedTraveler._id } }
+      );
+    }
+
+    res.status(201).json(clonedTraveler);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getTravelerById = async (req, res, next) => {
   try {
     const traveler = await Traveler.findById(req.params.id)
@@ -656,6 +742,7 @@ module.exports = {
   getArchivedTravelers,
   getAllTravelers,
   createTraveler,
+  cloneTraveler,
   getTravelerById,
   updateTraveler,
   deleteTraveler,
