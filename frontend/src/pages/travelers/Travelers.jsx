@@ -223,7 +223,7 @@ function Travelers() {
           <Box sx={{ 
             width: 100, 
             height: 20, 
-            bgcolor: '#FFEB3B', 
+            bgcolor: status === 1 ? '#FFEB3B' : '#E0E0E0',
             borderRadius: 1,
             display: 'flex',
             alignItems: 'center',
@@ -241,22 +241,34 @@ function Travelers() {
     if (inProgressPercentage === 100) {
       return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 100, height: 20, bgcolor: '#4CAF50', borderRadius: 1 }} />
-          <Typography variant="body2" sx={{ minWidth: 60 }}>{finished} / {totalInput}</Typography>
+          <Box sx={{ 
+            width: 100, 
+            height: 20, 
+            bgcolor: '#4CAF50', 
+            borderRadius: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Typography variant="body2" sx={{ color: '#fff', fontSize: 12 }}>{finished} / {totalInput}</Typography>
+          </Box>
         </Box>
       )
     }
     
-    // Normal status: dual-color progress bar (blue for completed + yellow for in-progress)
+    // Normal status: dual-color progress bar (blue for completed + yellow/gray for in-progress)
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Box sx={{ 
           width: 100, 
           height: 20, 
-          bgcolor: '#FFEB3B', 
+          bgcolor: status === 1 ? '#FFEB3B' : '#E0E0E0',
           borderRadius: 1,
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}>
           <Box sx={{ 
             position: 'absolute',
@@ -264,17 +276,18 @@ function Travelers() {
             top: 0,
             bottom: 0,
             width: `${inProgressPercentage}%`,
-            bgcolor: '#2196F3',
+            bgcolor: 'rgba(33, 150, 243, 0.3)',
             zIndex: 1
           }} />
+          <Typography variant="body2" sx={{ color: status === 1 ? '#000' : '#000', fontSize: 12, position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+            {finished} / {totalInput}
+          </Typography>
         </Box>
-        <Typography variant="body2" sx={{ minWidth: 60 }}>{finished} / {totalInput}</Typography>
       </Box>
-    )
-  }
-
-  if (error) {
-    return (
+          )
+        }
+      
+        if (error) {    return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
         <Typography color="error">Error loading travelers: {error.message}</Typography>
       </Box>

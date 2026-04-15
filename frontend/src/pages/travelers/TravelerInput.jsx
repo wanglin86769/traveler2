@@ -88,6 +88,10 @@ function TravelerInput() {
   
   const hasSections = sections.length > 0
   
+  // Determine if inputs should be enabled based on traveler status
+  // Only status === 1 (In Progress) allows input
+  const isInputEnabled = currentTraveler?.status === 1
+  
   // Mutation to save individual field
   const saveFieldMutation = useMutation({
     mutationFn: ({ travelerId, name, value, type }) => {
@@ -486,6 +490,7 @@ function TravelerInput() {
                         showHistoryGlobal={showHistory}
                         showNotesContentGlobal={showNotesContent}
                         travelerId={id}
+                        readOnly={!isInputEnabled}
                       />
                     )
                   })}

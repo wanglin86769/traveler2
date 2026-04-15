@@ -210,7 +210,7 @@ function TravelerDetail() {
                 Back
               </Button>
               <Typography variant="h6" fontWeight={600}>
-                Traveler Detail (Read-Only)
+                Traveler Detail
               </Typography>
             </Box>
             
