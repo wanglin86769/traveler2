@@ -27,6 +27,7 @@ import TravelerInput from './pages/travelers/TravelerInput'
 import TravelerShare from './pages/travelers/TravelerShare'
 import MyBinders from './pages/binders/MyBinders'
 import BinderDetail from './pages/binders/BinderDetail'
+import BinderShare from './pages/binders/BinderShare'
 import PublicBinders from './pages/binders/PublicBinders'
 import Groups from './pages/admin/Groups'
 import Profile from './pages/user/Profile'
@@ -181,8 +182,13 @@ function App() {
               <MyBinders />
             </KeepAlive>
           } />
-          <Route path="/binders/:id" element={<BinderDetail />} />          
-          
+          <Route path="/binders/:id/share" element={
+            <ProtectedRoute>
+              <BinderShare />
+            </ProtectedRoute>
+          } />
+          <Route path="/binders/:id" element={<BinderDetail />} />
+
           {/* Admin Route */}
           <Route path="/admin/users" element={<User />} />
           <Route path="/admin/groups" element={<Groups />} />

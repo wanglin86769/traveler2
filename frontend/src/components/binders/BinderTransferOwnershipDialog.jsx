@@ -1,51 +1,59 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { 
   Dialog, 
   DialogTitle, 
   DialogContent, 
   DialogActions, 
   Button, 
+  Typography,
   List, 
   ListItem, 
-  ListItemText, 
+  ListItemText,
+  Divider,
   TextField,
-  CircularProgress,
-  Alert,
   Box,
-  Typography
+  Chip,
+  Alert,
+  CircularProgress
 } from '@mui/material'
+import { Person as PersonIcon } from '@mui/icons-material'
 import { useQuery } from '@tanstack/react-query'
 import { getUsers } from '@/services/userService'
 
 const BinderTransferOwnershipDialog = ({ open, onClose, onConfirm, selectedBinders, currentUserId, isTransferring }) => {
-  const [targetUserId, setTargetUserId] = useState('')
-  const [error, setError] = useState('')
+  const [targetUserName, setTargetUserName] = useState('')
+  const [selectedUser, setSelectedUser] = useState(null)
 
-  // Fetch users for autocomplete
-  const { data: users = [], isLoading } = useQuery({
+  // Get users list
+  const { data: usersResponse, isLoading: usersLoading } = useQuery({
     queryKey: ['users'],
-    queryFn: getUsers,
+    queryFn: () => getUsers(),
+    retry: false,
     enabled: open
   })
 
-  const filteredUsers = users.filter(
-    user => user._id !== currentUserId // Cannot transfer to self
-  ).slice(0, 5)
-
-  const handleConfirm = () => {
-    if (!targetUserId) {
-      setError('Please select a user')
-      return
-    }
-    setError('')
-    onConfirm(targetUserId)
-  }
+  const users = usersResponse?.data || []
 
   const handleCancel = () => {
-    setTargetUserId('')
-    setError('')
+    setTargetUserName('')
+    setSelectedUser(null)
     onClose()
   }
+
+  const handleConfirm = () => {
+    if (!selectedUser) return
+    
+    onConfirm(selectedUser._id)
+    handleCancel()
+  }
+
+  const filteredUsers = users
+    .filter(user =>
+      (user.name?.toLowerCase().includes(targetUserName.toLowerCase()) ||
+       user._id?.toLowerCase().includes(targetUserName.toLowerCase())) &&
+      user._id !== currentUserId // Cannot transfer to self
+    )
+    .slice(0, 5)
 
   return (
     <Dialog open={open} onClose={handleCancel} maxWidth="sm" fullWidth>
@@ -64,68 +72,84 @@ const BinderTransferOwnershipDialog = ({ open, onClose, onConfirm, selectedBinde
             </ListItem>
           ))}
         </List>
-
-        {/* Target user selection */}
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
-            Select the user to transfer ownership to:
-          </Typography>
-          
-          {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : (
-            <List sx={{ maxHeight: 200, overflow: 'auto' }}>
-              {filteredUsers.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                  No users available
-                </Typography>
-              ) : (
-                filteredUsers.map(user => (
-                  <ListItem 
-                    key={user._id} 
-                    button 
-                    onClick={() => {
-                      setTargetUserId(user._id)
-                      setError('')
+        
+        <Divider sx={{ my: 2 }} />
+        
+        <Typography variant="subtitle2" gutterBottom>
+          to the following user
+        </Typography>
+        
+        {/* User search input */}
+        <TextField
+          label="Search User"
+          placeholder="Type user name or ID to search..."
+          value={targetUserName}
+          onChange={(e) => {
+            setTargetUserName(e.target.value)
+            setSelectedUser(null)
+          }}
+          fullWidth
+          size="small"
+          disabled={isTransferring}
+        />
+        
+        {/* User suggestions */}
+        {targetUserName && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+            {usersLoading ? (
+              <Typography variant="body2" color="text.secondary">
+                Loading users...
+              </Typography>
+            ) : filteredUsers.length > 0 ? (
+              filteredUsers.map(user => {
+                const isSelected = selectedUser?._id === user._id
+                return (
+                  <Chip
+                    key={user._id}
+                    icon={<PersonIcon />}
+                    label={user.name}
+                    onClick={() => !isTransferring && setSelectedUser(user)}
+                    clickable
+                    color={isSelected ? 'primary' : 'default'}
+                    variant={isSelected ? 'filled' : 'outlined'}
+                    sx={{
+                      opacity: isTransferring ? 0.6 : 1,
+                      cursor: isTransferring ? 'not-allowed' : 'pointer'
                     }}
-                    selected={targetUserId === user._id}
-                    sx={{ 
-                      border: targetUserId === user._id ? '2px solid #1976d2' : '1px solid #e0e0e0',
-                      mb: 1,
-                      borderRadius: 1
-                    }}
-                  >
-                    <ListItemText 
-                      primary={user.name || user.username || user._id}
-                      secondary={user.email || 'No email'}
-                    />
-                  </ListItem>
-                ))
-              )}
-            </List>
-          )}
-        </Box>
-
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
+                  />
+                )
+              })
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No users found matching "{targetUserName}"
+              </Typography>
+            )}
+          </Box>
+        )}
+        
+        {/* Selected user info */}
+        {selectedUser && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Selected: {selectedUser.name} ({selectedUser._id})
           </Alert>
         )}
       </DialogContent>
       
       <DialogActions>
-        <Button onClick={handleCancel}>
+        <Button 
+          onClick={handleCancel}
+          disabled={isTransferring}
+        >
           Cancel
         </Button>
         <Button 
           onClick={handleConfirm} 
           variant="contained" 
-          disabled={!targetUserId || isTransferring}
           color="primary"
+          disabled={!selectedUser || isTransferring}
+          startIcon={isTransferring ? <CircularProgress size={20} /> : null}
         >
-          {isTransferring ? <CircularProgress size={20} sx={{ color: 'white', mr: 1 }} /> : 'Transfer'}
+          {isTransferring ? 'Transferring...' : 'Confirm'}
         </Button>
       </DialogActions>
     </Dialog>
