@@ -123,7 +123,11 @@ function Groups() {
   const handleEditGroup = (group) => {
     setSelectedGroup(group)
     setEditGroupName(group.name)
-    setSelectedMembers(group.members || [])
+    // Convert members to array of IDs only
+    const memberIds = (group.members || []).map(member => 
+      typeof member === 'object' ? member._id : member
+    )
+    setSelectedMembers(memberIds)
     setEditDialogOpen(true)
     fetchUsers()
   }
