@@ -24,7 +24,8 @@ const travelerDataRoutes = require('./routes/travelerData');
 const travelerSharesRoutes = require('./routes/travelerShares');
 const discrepancyLogRoutes = require('./routes/discrepancyLogs');
 const travelerNoteRoutes = require('./routes/travelerNotes');
-const binderRoutes = require('./routes/binders');
+const binderRoutes = require('\./routes/binders');
+const binderSharesRoutes = require('\./routes/binderShares');
 const formReviewsRoutes = require('./routes/formReviews');
 const systemRoutes = require('./routes/system');
 
@@ -72,6 +73,7 @@ app.use('/api/travelers', travelerSharesRoutes);
 app.use('/api/travelers', discrepancyLogRoutes);
 app.use('/api/travelers', travelerNoteRoutes);
 app.use('/api/binders', binderRoutes);
+app.use('/api/binders', binderSharesRoutes);
 app.use('/api/system-info', systemRoutes);
 
 // Error handling

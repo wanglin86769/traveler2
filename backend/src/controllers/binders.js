@@ -107,7 +107,7 @@ const getAllBinders = async (req, res, next) => {
       ];
     }
 
-    if (status !== undefined) {
+    if (status !== undefined && status !== '' && status !== null) {
       query.status = parseFloat(status);
     }
 
@@ -611,6 +611,470 @@ const archiveBinder = async (req, res, next) => {
   }
 };
 
+const dearchiveBinder = async (req, res, next) => {
+  try {
+    const binder = await Binder.findById(req.params.id);
+
+    if (!binder) {
+      throw new ApiError(404, 'Binder not found');
+    }
+
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    if (binder.owner !== req.user._id && !isAdmin) {
+      throw new ApiError(403, 'Not authorized');
+    }
+
+    binder.archived = false;
+    binder.status = 0; // Reset to New status
+    await binder.save();
+
+    await History.create({
+      t: 'binder',
+      i: binder._id,
+      b: req.user._id,
+      c: [{ p: 'status', v: 0 }]
+    });
+
+    res.json({ message: 'Binder dearchived successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteBinder = async (req, res, next) => {
+  try {
+    const binder = await Binder.findById(req.params.id);
+
+    if (!binder) {
+      throw new ApiError(404, 'Binder not found');
+    }
+
+    const isAdmin = req.user.roles && req.user.roles.includes('admin');
+    if (binder.owner !== req.user._id && !isAdmin) {
+      throw new ApiError(403, 'Not authorized');
+    }
+
+    await Binder.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Binder deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getMyBinders = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, status } = req.query;
+    const userId = req.user._id;
+
+    const query = {
+      $or: [
+        { createdBy: userId },
+        { owner: userId }
+      ],
+      status: { $ne: 3 } // Exclude archived
+    };
+
+    if (status !== undefined && status !== '' && status !== null) {
+      query.status = parseFloat(status);
+    }
+
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const binders = await Binder.find(query)
+      .populate('createdBy', '_id name')
+      .populate('owner', '_id name')
+      .populate('updatedBy', '_id name')
+      .populate('sharedWith', '_id username name')
+      .populate('sharedGroup', '_id groupname name')
+      .sort({ updatedOn: -1, createdOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Binder.countDocuments(query);
+
+    res.json({
+      data: binders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getTransferredBinders = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, status } = req.query;
+    const userId = req.user._id;
+
+    const query = {
+      owner: userId,
+      createdBy: { $ne: userId },
+      status: { $ne: 3 }
+    };
+
+    if (status !== undefined && status !== '' && status !== null) {
+      query.status = parseFloat(status);
+    }
+
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const binders = await Binder.find(query)
+      .populate('createdBy', '_id name')
+      .populate('owner', '_id name')
+      .populate('updatedBy', '_id name')
+      .populate('sharedWith', '_id username name')
+      .populate('sharedGroup', '_id groupname name')
+      .sort({ updatedOn: -1, createdOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Binder.countDocuments(query);
+
+    res.json({
+      data: binders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getSharedBinders = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, status } = req.query;
+    const userId = req.user._id;
+
+    const user = await require('../models/User').User.findById(userId, 'binders');
+
+    if (!user) {
+      return res.status(400).json({ message: 'Cannot identify the current user' });
+    }
+
+    // Filter out invalid ObjectIds
+    const validBinderIds = (user.binders || []).filter(id => {
+      try {
+        return require('mongoose').Types.ObjectId.isValid(id);
+      } catch (e) {
+        return false;
+      }
+    });
+
+    // Build query
+    const query = {
+      _id: { $in: validBinderIds },
+      status: { $ne: 3 } // Exclude archived
+    };
+
+    if (status !== undefined && status !== '' && status !== null) {
+      query.status = parseFloat(status);
+    }
+
+    // Add search filter if provided
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const binders = await Binder.find(query)
+      .populate('createdBy', '_id name')
+      .populate('owner', '_id name')
+      .populate('updatedBy', '_id name')
+      .populate('sharedWith', '_id username name')
+      .populate('sharedGroup', '_id groupname name')
+      .select('title description status tags owner updatedBy updatedOn publicAccess sharedWith sharedGroup')
+      .sort({ updatedOn: -1, createdOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Binder.countDocuments(query);
+
+    res.json({
+      data: binders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getGroupSharedBinders = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, status } = req.query;
+    const userId = req.user._id;
+
+    // Find all groups that the current user is a member of
+    const groups = await require('../models/User').Group.find({
+      members: userId,
+      deleted: { $ne: true }
+    }).select('binders');
+
+    // Merge all group binders, remove duplicates
+    const binderIds = [];
+    for (const group of groups) {
+      for (const binderId of group.binders) {
+        if (!binderIds.includes(binderId)) {
+          binderIds.push(binderId);
+        }
+      }
+    }
+
+    // Build query
+    const query = {
+      _id: { $in: binderIds },
+      status: { $ne: 3 } // Exclude archived
+    };
+
+    if (status !== undefined && status !== '' && status !== null) {
+      query.status = parseFloat(status);
+    }
+
+    // Add search filter if provided
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const binders = await Binder.find(query)
+      .populate('createdBy', '_id name')
+      .populate('owner', '_id name')
+      .populate('updatedBy', '_id name')
+      .populate('sharedWith', '_id username name')
+      .populate('sharedGroup', '_id groupname name')
+      .select('title description status tags owner updatedBy updatedOn publicAccess sharedWith sharedGroup')
+      .sort({ updatedOn: -1, createdOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Binder.countDocuments(query);
+
+    res.json({
+      data: binders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getArchivedBinders = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, status } = req.query;
+    const userId = req.user._id;
+
+    const query = {
+      status: 3 // Archived status
+    };
+
+    if (status !== undefined && status !== '' && status !== null) {
+      query.status = parseFloat(status);
+    }
+
+    // Only show archived binders that the user has access to
+    query.$or = [
+      { createdBy: userId },
+      { owner: userId },
+      { 'sharedWith._id': userId }
+    ];
+
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const binders = await Binder.find(query)
+      .populate('createdBy', '_id name')
+      .populate('owner', '_id name')
+      .populate('updatedBy', '_id name')
+      .populate('sharedWith', '_id username name')
+      .populate('sharedGroup', '_id groupname name')
+      .sort({ archivedOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Binder.countDocuments(query);
+
+    res.json({
+      data: binders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getPublicBinders = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search, status } = req.query;
+
+    const query = {
+      publicAccess: { $gte: 0 },
+      status: { $ne: 3 }
+    };
+
+    if (status !== undefined && status !== '' && status !== null) {
+      query.status = parseFloat(status);
+    }
+
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    const binders = await Binder.find(query)
+      .populate('createdBy', '_id name')
+      .populate('owner', '_id name')
+      .populate('updatedBy', '_id name')
+      .populate('sharedWith', '_id username name')
+      .populate('sharedGroup', '_id groupname name')
+      .sort({ updatedOn: -1, createdOn: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Binder.countDocuments(query);
+
+    res.json({
+      data: binders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const transferOwnership = async (req, res, next) => {
+  try {
+    const { binderIds, userId } = req.body;
+
+    if (!binderIds || !Array.isArray(binderIds) || binderIds.length === 0) {
+      throw new ApiError(400, 'binderIds must be a non-empty array');
+    }
+
+    if (!userId) {
+      throw new ApiError(400, 'userId is required');
+    }
+
+    const targetUser = await require('../models/User').User.findById(userId);
+    if (!targetUser) {
+      throw new ApiError(404, 'Target user not found');
+    }
+
+    const binders = await Binder.find({ _id: { $in: binderIds } });
+    
+    if (binders.length === 0) {
+      throw new ApiError(404, 'No binders found');
+    }
+
+    const results = [];
+    for (const binder of binders) {
+      if (binder.owner !== req.user._id) {
+        results.push({
+          _id: binder._id,
+          title: binder.title,
+          success: false,
+          error: 'Not the owner'
+        });
+        continue;
+      }
+
+      const oldOwner = binder.owner;
+      binder.owner = userId;
+      binder.transferredOn = Date.now();
+      binder.transferredBy = req.user._id;
+      await binder.save();
+
+      await History.create({
+        t: 'binder',
+        i: binder._id,
+        b: req.user._id,
+        c: [
+          { p: 'owner', v: userId },
+          { p: 'transferredOn', v: Date.now() }
+        ]
+      });
+
+      results.push({
+        _id: binder._id,
+        title: binder.title,
+        success: true
+      });
+    }
+
+    res.json({
+      message: 'Ownership transfer completed',
+      results
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllBinders,
   getWritableBinders,
@@ -622,5 +1086,14 @@ module.exports = {
   addWorkToBinder,
   removeWorkFromBinder,
   updateBinderStatus,
-  archiveBinder
+  archiveBinder,
+  dearchiveBinder,
+  deleteBinder,
+  getMyBinders,
+  getTransferredBinders,
+  getSharedBinders,
+  getGroupSharedBinders,
+  getArchivedBinders,
+  getPublicBinders,
+  transferOwnership
 };

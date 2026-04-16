@@ -5,6 +5,30 @@ const binderService = {
     return api.get('/binders', { params })
   },
 
+  getMyBinders: (params = {}) => {
+    return api.get('/binders/my', { params })
+  },
+
+  getTransferredBinders: (params = {}) => {
+    return api.get('/binders/transferred', { params })
+  },
+
+  getSharedBinders: (params = {}) => {
+    return api.get('/binders/shared', { params })
+  },
+
+  getGroupSharedBinders: (params = {}) => {
+    return api.get('/binders/group-shared', { params })
+  },
+
+  getArchivedBinders: (params = {}) => {
+    return api.get('/binders/archived', { params })
+  },
+
+  getPublicBinders: (params = {}) => {
+    return api.get('/binders/public', { params })
+  },
+
   getWritableBinders: (params = {}) => {
     return api.get('/binders/writable', { params })
   },
@@ -23,6 +47,18 @@ const binderService = {
 
   deleteBinder: (id) => {
     return api.delete(`/binders/${id}`)
+  },
+
+  archiveBinder: (id) => {
+    return api.put(`/binders/${id}/archive`)
+  },
+
+  dearchiveBinder: (id) => {
+    return api.put(`/binders/${id}/dearchive`)
+  },
+
+  transferOwnership: (binderIds, userId) => {
+    return api.put('/binders/transfer', { binderIds, userId })
   },
 
   addWork: (id, work) => {
@@ -48,11 +84,20 @@ const binderService = {
 
 // Named exports for individual functions
 export const getBinders = binderService.getBinders
+export const getMyBinders = binderService.getMyBinders
+export const getTransferredBinders = binderService.getTransferredBinders
+export const getSharedBinders = binderService.getSharedBinders
+export const getGroupSharedBinders = binderService.getGroupSharedBinders
+export const getArchivedBinders = binderService.getArchivedBinders
+export const getPublicBinders = binderService.getPublicBinders
 export const getWritableBinders = binderService.getWritableBinders
 export const getBinder = binderService.getBinder
 export const createBinder = binderService.createBinder
 export const updateBinder = binderService.updateBinder
 export const deleteBinder = binderService.deleteBinder
+export const archiveBinder = binderService.archiveBinder
+export const dearchiveBinder = binderService.dearchiveBinder
+export const transferOwnership = binderService.transferOwnership
 export const addWorkToBinder = binderService.addWork
 export const getBinderWorks = binderService.getWorks
 export const removeWorkFromBinder = binderService.removeWork
