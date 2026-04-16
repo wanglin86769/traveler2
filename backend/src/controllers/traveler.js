@@ -526,7 +526,11 @@ const cloneTraveler = async (req, res, next) => {
       throw new ApiError(403, 'Access denied');
     }
 
-    // Create clone object
+    // Only create discrepancyForm if the original traveler actually has discrepancy content
+    const hasDiscrepancyContent = originalTraveler.discrepancyForm?.json && 
+      Array.isArray(originalTraveler.discrepancyForm.json) && 
+      originalTraveler.discrepancyForm.json.length > 0
+
     const clonedTraveler = new Traveler({
       title: req.body.title || `${originalTraveler.title} clone`,
       description: originalTraveler.description,
@@ -550,12 +554,16 @@ const cloneTraveler = async (req, res, next) => {
         _v: originalTraveler.form?._v,
         alias: originalTraveler.form?.alias
       },
-      discrepancyForm: {
-        json: originalTraveler.discrepancyForm?.json || [],
-        activatedOn: [],
-        _v: originalTraveler.discrepancyForm?._v,
-        _id: originalTraveler.discrepancyForm?._id
-      },
+      // Only include discrepancyForm if there's actual discrepancy content
+      ...(hasDiscrepancyContent ? {
+        discrepancyForm: {
+          json: originalTraveler.discrepancyForm.json,
+          activatedOn: [],
+          _v: originalTraveler.discrepancyForm._v,
+          // Don't copy _id to avoid conflicts, let MongoDB generate new one
+        },
+        referenceDiscrepancyForm: originalTraveler.referenceDiscrepancyForm
+      } : {}),
       data: [],                             // Clear data (critical)
       notes: [],                            // Clear notes
       totalInput: originalTraveler.totalInput || 0,

@@ -410,13 +410,15 @@ function TravelerInput() {
           {/* Traveler Information */}
           <TravelerInfo traveler={currentTraveler} />
           
-          {/* Discrepancy Log */}
-          <DiscrepancyForm
-            discrepancyFormFields={discrepancyFormFields}
-            discrepancyLogs={discrepancyLogs}
-            onSubmit={handleDiscrepancySubmit}
-            travelerId={id}
-          />
+          {/* Discrepancy Log - Only show if hasDiscrepancyForm is true */}
+          {hasDiscrepancyForm && (
+            <DiscrepancyForm
+              discrepancyFormFields={discrepancyFormFields}
+              discrepancyLogs={discrepancyLogs}
+              onSubmit={handleDiscrepancySubmit}
+              travelerId={id}
+            />
+          )}
           
           {/* Form elements */}
           {currentTraveler.form.json && (

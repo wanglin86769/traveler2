@@ -24,9 +24,13 @@ export const useTravelerNavigation = (currentTraveler) => {
 
   // Get discrepancy history records
   const hasDiscrepancyForm = useMemo(() => {
-    return currentTraveler?.discrepancyForm ||
-      (currentTraveler?.discrepancyLogs && currentTraveler.discrepancyLogs.length > 0)
-  }, [currentTraveler?.discrepancyForm, currentTraveler?.discrepancyLogs])
+    // Check if this is a discrepancy traveler by checking if discrepancyForm.json has actual content
+    // Normal travelers have empty json array [], discrepancy travelers have form fields
+    const hasDiscrepancyContent = currentTraveler?.discrepancyForm?.json && 
+      Array.isArray(currentTraveler.discrepancyForm.json) && 
+      currentTraveler.discrepancyForm.json.length > 0
+    return hasDiscrepancyContent
+  }, [currentTraveler?.discrepancyForm?.json])
 
   // Build navigation sections for sidebar
   const sections = useMemo(() => {
