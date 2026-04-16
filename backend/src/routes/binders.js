@@ -27,6 +27,10 @@ router.get('/writable', authenticate, bindersController.getWritableBinders);
 // Detail and CRUD routes
 router.get('/:id', authenticate, bindersController.getBinderById);
 
+// Works routes
+router.get('/:id/works', authenticate, bindersController.getBinderWorks);
+router.delete('/:id/works/:workId', authenticate, bindersController.removeWorkFromBinder);
+
 router.post('/', authenticate, [
   body('title').notEmpty().withMessage('Title is required')
 ], validateRequest, bindersController.createBinder);

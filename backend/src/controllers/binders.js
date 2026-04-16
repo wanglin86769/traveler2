@@ -182,8 +182,7 @@ const createBinder = async (req, res, next) => {
       owner: req.user._id,
       status: 0,
       works: [],
-      createdOn: new Date(),
-      updatedOn: new Date()
+      createdOn: new Date()
     });
 
     await binder.save();
@@ -695,7 +694,7 @@ const getMyBinders = async (req, res, next) => {
       .populate('updatedBy', '_id name')
       .populate('sharedWith', '_id username name')
       .populate('sharedGroup', '_id groupname name')
-      .sort({ updatedOn: -1, createdOn: -1 })
+      .sort({ createdOn: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 

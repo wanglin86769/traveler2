@@ -39,6 +39,7 @@ function AddToBinderDialog({ open, onClose, itemIds, itemType = 'traveler', sour
   const [results, setResults] = useState({}) // Store individual binder results
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [finalSelectedBinders, setFinalSelectedBinders] = useState(new Set())
 
   // Get writable binders list
   useEffect(() => {
@@ -99,6 +100,9 @@ function AddToBinderDialog({ open, onClose, itemIds, itemType = 'traveler', sour
     setResults({})
 
     try {
+      // Store the selected binders for later use
+      setFinalSelectedBinders(new Set(selectedBinders))
+      
       // Show individual status for each binder
       const promises = Array.from(selectedBinders).map(binderId =>
         addWorksToBinder(binderId, {
@@ -131,7 +135,8 @@ function AddToBinderDialog({ open, onClose, itemIds, itemType = 'traveler', sour
     setError(null)
     setDataLoaded(false)
     setResults({})
-    onClose()
+    // Pass the selected binders to parent
+    onClose(finalSelectedBinders)
   }
 
   const formatTimeAgo = (dateString) => {

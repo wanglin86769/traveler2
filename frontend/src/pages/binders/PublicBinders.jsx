@@ -311,7 +311,16 @@ function PublicBinders() {
 
       <AddToBinderDialog
         open={addToBinderDialogOpen}
-        onClose={() => setAddToBinderDialogOpen(false)}
+        onClose={(selectedBinders) => {
+          setAddToBinderDialogOpen(false)
+          // Refresh binders list to update any status changes
+          queryClient.invalidateQueries({ queryKey: ['binders'] })
+          // Refresh binder-works for the binders that were updated
+          selectedBinders?.forEach(binderId => {
+            queryClient.invalidateQueries({ queryKey: ['binder-works', binderId] })
+            queryClient.invalidateQueries({ queryKey: ['binder', binderId] })
+          })
+        }}
         itemIds={Array.from(selectedBinders)}
         itemType="binder"
         sourceItem={selectedBinders.size === 1 ? items.find(item => selectedBinders.has(item._id)) : null}

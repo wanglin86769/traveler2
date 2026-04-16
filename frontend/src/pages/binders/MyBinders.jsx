@@ -284,97 +284,210 @@ function MyBinders() {
   }
 
   const renderWorkProgress = (binder) => {
-    const { status, totalWork, finishedWork, totalInput, finishedInput } = binder
-    
+    const { status, totalWork, finishedWork, inProgressWork, totalInput, finishedInput } = binder
+
     // Completed status (status === 2)
     if (status === 2) {
       return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 100, height: 20, bgcolor: '#4CAF50', borderRadius: 1 }} />
-        </Box>
-      )
-    }
-    
-    // No totalWork field
-    if (totalWork === undefined || totalWork === null) {
-      return <Typography variant="body2">unknown</Typography>
-    }
-    
-    // totalWork is 0
-    if (totalWork === 0) {
-      return (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ 
-            width: 100, 
-            height: 20, 
-            bgcolor: status === 1 ? '#FFEB3B' : '#E0E0E0',
+          <Box sx={{
+            width: 100,
+            height: 20,
+            bgcolor: '#4CAF50',
             borderRadius: 1,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+            overflow: 'hidden'
           }}>
-            <Typography variant="body2" sx={{ color: '#000', fontSize: 12 }}>0 / {totalWork || 0}</Typography>
+            <Typography variant="body2" sx={{
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {finishedWork || 0} / {totalWork || 0}
+            </Typography>
           </Box>
         </Box>
       )
     }
-    
+
+    // No totalWork field
+    if (totalWork === undefined || totalWork === null) {
+      return <Typography variant="body2" sx={{ color: '#757575' }}>unknown</Typography>
+    }
+
+    // totalWork is 0, but check if there are input items
+    if (totalWork === 0) {
+      // If there are input items, show input progress
+      if ((totalInput || 0) > 0) {
+        const inputFinished = finishedInput || 0
+        const inputTotal = totalInput || 0
+        const inputPercentage = Math.floor((inputFinished / inputTotal) * 100)
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{
+              width: 100,
+              height: 20,
+              bgcolor: '#E0E0E0',
+              borderRadius: 1,
+              position: 'relative',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
+            }}>
+              {inputPercentage > 0 && (
+                <Box sx={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: `${inputPercentage}%`,
+                  bgcolor: '#4CAF50',
+                  zIndex: 1,
+                  transition: 'width 0.3s ease'
+                }} />
+              )}
+              <Typography variant="body2" sx={{
+                color: '#212121',
+                fontSize: 11,
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                fontWeight: 500,
+                textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+                zIndex: 2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {inputFinished} / {inputTotal}
+              </Typography>
+            </Box>
+          </Box>
+        )
+      }
+
+      // No work items and no input items
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{
+            width: 100,
+            height: 20,
+            bgcolor: '#E0E0E0',
+            borderRadius: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+            overflow: 'hidden'
+          }}>
+            <Typography variant="body2" sx={{
+              color: '#616161',
+              fontSize: 12,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              0 / 0
+            </Typography>
+          </Box>
+        </Box>
+      )
+    }
+
     const finished = finishedWork || 0
-    const inProgress = (totalInput || 0) > 0 ? (finishedInput || 0) / (totalInput || 0) : 0
+    const inProgress = inProgressWork || 0
     const finishedPercentage = Math.floor((finished / totalWork) * 100)
-    const inProgressPercentage = Math.floor(inProgress * 100)
-    
+    const inProgressPercentage = Math.floor((inProgress / totalWork) * 100)
+
+    // 100% finished
     if (finishedPercentage === 100) {
       return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ 
-            width: 100, 
-            height: 20, 
-            bgcolor: '#4CAF50', 
+          <Box sx={{
+            width: 100,
+            height: 20,
+            bgcolor: '#4CAF50',
             borderRadius: 1,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+            overflow: 'hidden'
           }}>
-            <Typography variant="body2" sx={{ color: '#fff', fontSize: 12 }}>{finished} / {totalWork}</Typography>
+            <Typography variant="body2" sx={{
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {finished} / {totalWork}
+            </Typography>
           </Box>
         </Box>
       )
     }
-    
+
     // Normal status: dual-color progress bar (green for finished + blue for in-progress)
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Box sx={{ 
-          width: 100, 
-          height: 20, 
-          bgcolor: status === 1 ? '#FFEB3B' : '#E0E0E0',
+        <Box sx={{
+          width: 100,
+          height: 20,
+          bgcolor: '#E0E0E0',
           borderRadius: 1,
           position: 'relative',
           overflow: 'hidden',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
         }}>
-          <Box sx={{ 
+          <Box sx={{
             position: 'absolute',
             left: 0,
             top: 0,
             bottom: 0,
             width: `${finishedPercentage}%`,
             bgcolor: '#4CAF50',
-            zIndex: 1
+            zIndex: 1,
+            transition: 'width 0.3s ease'
           }} />
-          <Box sx={{ 
+          <Box sx={{
             position: 'absolute',
             left: `${finishedPercentage}%`,
             top: 0,
             bottom: 0,
             width: `${inProgressPercentage}%`,
-            bgcolor: 'rgba(33, 150, 243, 0.7)',
-            zIndex: 1
+            bgcolor: 'rgba(33, 150, 243, 0.85)',
+            zIndex: 1,
+            transition: 'width 0.3s ease'
           }} />
-          <Typography variant="body2" sx={{ color: '#000', fontSize: 12, position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+          <Typography variant="body2" sx={{
+            color: '#212121',
+            fontSize: 11,
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontWeight: 500,
+            textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+            zIndex: 2,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
             {finished} / {totalWork} + {finishedInput || 0} / {totalInput || 0}
           </Typography>
         </Box>
@@ -602,12 +715,12 @@ function MyBinders() {
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                         <Typography variant="body2">
-                          {binder.updatedBy?.name || '-'}
+                          {binder.updatedOn ? (binder.updatedBy?.name || binder.updatedBy?.username || '') : ''}
                         </Typography>
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #E0E0E0' }}>
                         <Typography variant="body2">
-                          {getRelativeTime(binder.updatedOn)}
+                          {binder.updatedOn ? getRelativeTime(binder.updatedOn) : ''}
                         </Typography>
                       </TableCell>
                       <TableCell sx={{ border: '1px solid #E0E0E0' }}>
@@ -626,30 +739,12 @@ function MyBinders() {
                           </IconButton>
                           <IconButton 
                             size="medium"
-                            onClick={() => navigate(`/binders/${binder._id}/edit`)}
-                            sx={{ color: '#FB8C00', '&:hover': { backgroundColor: 'rgba(251, 140, 0, 0.08)' } }}
-                            aria-label="Edit binder"
-                            title="Edit binder"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton 
-                            size="medium"
                             onClick={() => navigate(`/binders/${binder._id}/share`)}
                             sx={{ color: '#7c3aed', '&:hover': { backgroundColor: 'rgba(124, 58, 237, 0.08)' } }}
                             aria-label="Share binder"
                             title="Share binder"
                           >
                             <ShareIcon />
-                          </IconButton>
-                          <IconButton 
-                            size="medium"
-                            onClick={() => navigate(`/binders/${binder._id}/config`)}
-                            sx={{ color: '#607D8B', '&:hover': { backgroundColor: 'rgba(96, 125, 139, 0.08)' } }}
-                            aria-label="Configure binder"
-                            title="Configure binder"
-                          >
-                            <SettingsIcon />
                           </IconButton>
                         </Box>
                       </TableCell>
@@ -810,7 +905,16 @@ function MyBinders() {
 
       <AddToBinderDialog
         open={addToBinderDialogOpen}
-        onClose={() => setAddToBinderDialogOpen(false)}
+        onClose={(selectedBinders) => {
+          setAddToBinderDialogOpen(false)
+          // Refresh binders list to update any status changes
+          queryClient.invalidateQueries({ queryKey: ['binders'] })
+          // Refresh binder-works for the binders that were updated
+          selectedBinders?.forEach(binderId => {
+            queryClient.invalidateQueries({ queryKey: ['binder-works', binderId] })
+            queryClient.invalidateQueries({ queryKey: ['binder', binderId] })
+          })
+        }}
         itemIds={Array.from(selectedBinders)}
         itemType="binder"
         sourceItem={selectedBinders.size === 1 ? items.find(item => selectedBinders.has(item._id)) : null}

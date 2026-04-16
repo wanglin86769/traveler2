@@ -710,7 +710,16 @@ function MyTravelers() {
 
       <AddToBinderDialog
         open={addToBinderDialogOpen}
-        onClose={() => setAddToBinderDialogOpen(false)}
+        onClose={(selectedBinders) => {
+          setAddToBinderDialogOpen(false)
+          // Refresh travelers list to update any status changes
+          queryClient.invalidateQueries({ queryKey: ['travelers'] })
+          // Refresh binder-works for the binders that were updated
+          selectedBinders?.forEach(binderId => {
+            queryClient.invalidateQueries({ queryKey: ['binder-works', binderId] })
+            queryClient.invalidateQueries({ queryKey: ['binder', binderId] })
+          })
+        }}
         itemIds={Array.from(selectedTravelers)}
         itemType="traveler"
         sourceItem={selectedTravelers.size === 1 

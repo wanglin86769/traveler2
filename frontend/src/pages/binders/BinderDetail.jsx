@@ -25,7 +25,8 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
-  Checkbox
+  Checkbox,
+  Collapse
 } from '@mui/material'
 import {
   ArrowBack as BackIcon,
@@ -48,6 +49,7 @@ function BinderDetail() {
   const [selectedType, setSelectedType] = useState('traveler')
   const [selectedIds, setSelectedIds] = useState([])
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   // Use React Query to get binder details
   const { data: currentBinder, isLoading, error: binderError } = useQuery({
@@ -220,27 +222,83 @@ function BinderDetail() {
   return (
     <Box>
       {/* Title and action buttons area */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
-        <Button startIcon={<BackIcon />} onClick={() => navigate(-1)} size="small">
-          Back
-        </Button>
-        <Typography variant="h5" fontWeight={600} sx={{ flexGrow: 1 }}>
-          {currentBinder.title}
-        </Typography>
-        <Button variant="outlined" size="small">Details</Button>
-        <Button variant="outlined" size="small">Default sorting</Button>
-        <Button variant="outlined" size="small">Select all</Button>
-        <Button variant="outlined" size="small">Select none</Button>
-        <Button variant="contained" size="small" color="primary">Generate report</Button>
-        <Button variant="contained" size="small" color="primary">Configuration</Button>
-      </Box>
-
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
+              <Button 
+                startIcon={<BackIcon />} 
+                onClick={() => navigate(-1)} 
+                size="small"
+                variant="outlined"
+                sx={{ borderColor: '#d9d9d9' }}
+              >
+                Back
+              </Button>
+              <Typography variant="h5" fontWeight={600} sx={{ flexGrow: 1 }}>
+                {currentBinder.title}
+              </Typography>
+              <Button variant="outlined" size="small" onClick={() => setDetailsOpen(!detailsOpen)}>
+                Details
+              </Button>
+            </Box>
       {/* Subtitle */}
       {currentBinder.description && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           {currentBinder.description}
         </Typography>
       )}
+
+      {/* Collapsible Details Area */}
+      <Collapse in={detailsOpen}>
+        <Paper sx={{ mb: 3, p: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Owner
+              </Typography>
+              <Typography variant="body1">
+                {currentBinder.owner || currentBinder.createdBy || '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Status
+              </Typography>
+              <Chip
+                label={getStatusLabel(currentBinder.status)}
+                size="small"
+                color={getStatusColor(currentBinder.status)}
+              />
+            </Box>
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Created on
+              </Typography>
+              <Typography variant="body1">
+                {currentBinder.createdOn ? new Date(currentBinder.createdOn).toLocaleString() : '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Updated on
+              </Typography>
+              <Typography variant="body1">
+                {currentBinder.updatedOn ? new Date(currentBinder.updatedOn).toLocaleString() : '-'}
+              </Typography>
+            </Box>
+          </Box>
+          {currentBinder.tags && currentBinder.tags.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Tags
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {currentBinder.tags.map((tag, index) => (
+                  <Chip key={index} label={tag} size="small" variant="outlined" />
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Paper>
+      </Collapse>
 
       {/* Progress area */}
       <Box sx={{ mb: 4 }}>
@@ -330,9 +388,7 @@ function BinderDetail() {
                 <TableCell width={50}>C</TableCell>
                 <TableCell>Title</TableCell>
                 <TableCell>Owner</TableCell>
-                <TableCell>Devices</TableCell>
                 <TableCell>Tags</TableCell>
-                <TableCell>Reporting IDs</TableCell>
                 <TableCell>Powered by</TableCell>
                 <TableCell>Estimated progress</TableCell>
                 <TableCell align="right">Actions</TableCell>
@@ -341,13 +397,13 @@ function BinderDetail() {
             <TableBody>
               {worksLoading ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                  <TableCell colSpan={8} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
               ) : works.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                  <TableCell colSpan={8} align="center">
                     <Typography color="text.secondary">No works added yet</Typography>
                   </TableCell>
                 </TableRow>
@@ -405,8 +461,6 @@ function BinderDetail() {
                     </TableCell>
                     <TableCell>{currentBinder.owner || currentBinder.createdBy}</TableCell>
                     <TableCell>—</TableCell>
-                    <TableCell>—</TableCell>
-                    <TableCell>—</TableCell>
                     <TableCell>W</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -438,11 +492,10 @@ function BinderDetail() {
           </Table>
         </TableContainer>
 
-        <Box sx={{ p: 2, borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ p: 2, borderTop: '1px solid #e0e0e0' }}>
           <Typography variant="caption">
             Showing 1 to {works.length} of {works.length} entries
           </Typography>
-          <Typography variant="caption">Release 3.2.0</Typography>
         </Box>
       </Paper>
 
